@@ -6,11 +6,15 @@ import math
 import os
 import sys
 import traceback
+import subprocess
+import hashlib
 from dataclasses import fields
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from scipy.optimize import linprog
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from services.nutrition import categories, calculate
 
 ROOT = Path(__file__).resolve().parent
 RUFAS_ROOT = ROOT.parent
@@ -283,7 +287,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_GET(self):
-        if self.path in ('/', '/index.html'):
+        request_path = self.path.partition('?')[0]
+        if request_path in ('/', '/index.html'):
             data = (ROOT / 'index.html').read_bytes()
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
@@ -291,7 +296,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(data)))
             self.end_headers()
             self.wfile.write(data)
-        elif self.path == '/styles.css':
+        elif request_path == '/styles.css':
             data = (ROOT / 'styles.css').read_bytes()
             self.send_response(200)
             self.send_header('Content-Type', 'text/css; charset=utf-8')
@@ -299,21 +304,68 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(data)))
             self.end_headers()
             self.wfile.write(data)
-        elif self.path == '/api/health':
+        elif request_path == '/api/nasem-feeds':
+            from services.native_ration import available_feeds
+            self._send({'feeds': available_feeds()})
+        elif request_path == '/api/animal-categories':
+            self._send({'categories': categories()})
+        elif request_path == '/api/health':
+            feed_path = RUFAS_ROOT / 'input/data/feed/NASEM_Comp_with_TDN.csv'
+            try:
+                revision = subprocess.run(['git', '-C', str(RUFAS_ROOT), 'rev-parse', 'HEAD'],
+                                          capture_output=True, text=True, check=False)
+                commit = revision.stdout.strip() if revision.returncode == 0 else None
+            except OSError:
+                commit = None
             self._send({'ok': True, 'didactic': 'SciPy/HiGHS',
-                        'native': (RUFAS_ROOT / 'RUFAS' / 'biophysical' / 'animal' / 'ration' / 'ration_optimizer.py').is_file()})
+                        'native': (RUFAS_ROOT / 'RUFAS' / 'biophysical' / 'animal' / 'ration' / 'ration_optimizer.py').is_file(),
+                        'rufas_commit': commit,
+                        'feed_library_sha256': hashlib.sha256(feed_path.read_bytes()).hexdigest() if feed_path.is_file() else None})
         else:
             self._send({'error': 'Rota não encontrada.'}, 404)
 
     def do_POST(self):
-        if self.path not in ('/api/optimize', '/api/rufas-native'):
+        if self.path not in ('/api/optimize', '/api/rufas-native', '/api/nutritional-requirements', '/api/scenarios/validate', '/api/sensitivity-analysis', '/api/economic-comparison'):
             return self._send({'error': 'Rota não encontrada.'}, 404)
         try:
             size = int(self.headers.get('Content-Length', '0'))
             if size <= 0 or size > MAX_BODY:
                 return self._send({'error': 'Tamanho de requisição inválido.'}, 413)
             payload = json.loads(self.rfile.read(size))
-            data = optimize(payload) if self.path == '/api/optimize' else rufas_native(payload)
+            if self.path == '/api/scenarios/validate':
+                from services.scenarios import validate_scenario
+                if isinstance(payload, dict) and payload.get('allow_incomplete') is True:
+                    data = {'scenario': validate_scenario(payload.get('scenario'), allow_incomplete=True)}
+                else:
+                    data = {'scenario': validate_scenario(payload)}
+            elif self.path == '/api/optimize':
+                data = optimize(payload)
+            elif self.path == '/api/nutritional-requirements':
+                if isinstance(payload, dict) and payload.get('previous_ration') is not None:
+                    from services.native_ration import prepare_animal_payload
+                    payload = prepare_animal_payload(payload)
+                data = calculate(payload)
+            elif self.path == '/api/sensitivity-analysis':
+                from services.sensitivity import run_sensitivity
+                data = run_sensitivity(payload)
+            elif self.path == '/api/economic-comparison':
+                from services.economic_comparison import compare_diets_economically
+                from services.native_ration import feed_library
+                if not isinstance(payload, dict):
+                    raise ValueError('Economic comparison input must be an object.')
+                data = compare_diets_economically(
+                    baseline_ration=payload.get('baseline_ration'),
+                    optimized_ration=payload.get('optimized_ration'),
+                    price_records=payload.get('price_records'),
+                    feed_catalog=feed_library(),
+                    batch_size=payload.get('batch_size'),
+                    milk_data=payload.get('milk_data'),
+                )
+            elif isinstance(payload, dict) and 'animal_category' in payload:
+                from services.native_ration import optimize_native
+                data = optimize_native(payload)
+            else:
+                data = rufas_native(payload)
             self._send(data)
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             self._send({'error': str(exc)}, 422)

@@ -1,0 +1,6 @@
+nutrient,unit,minimum_source,maximum_source,reference
+net_energy,Mcal/day,nasem,not_applicable,RuFaS NASEMRequirementsCalculator
+metabolizable_protein,g/day,nasem,rufas,RuFaS NASEMRequirementsCalculator
+calcium,g/day,nasem,not_applicable,RuFaS NASEMRequirementsCalculator
+phosphorus,g/day,nasem,not_applicable,RuFaS NASEMRequirementsCalculator
+dry_matter,kg/day,rufas,rufas,RuFaS NASEMRequirementsCalculator

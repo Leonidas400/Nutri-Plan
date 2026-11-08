@@ -1,0 +1,653 @@
+{
+  "schema_version": 1,
+  "purpose": "Base experimental audit for lactating dairy cows. The two cases are independent and must not be directly cross-compared.",
+  "case_a_ifg_2026": {
+    "title": "Formulação Nutricional Otimizada como Ferramenta para Aumento de Margem Econômica na Pecuária Leiteira",
+    "author": "Daniel Brandão Silva Brito",
+    "institution_year": "IFG, 2026",
+    "source_pdf": "/home/yago/Downloads/Formulação_Nutricional_Otimizada_como_Ferramenta_p_261107_183007 (1).pdf",
+    "method": {
+      "requirements": "NRC 2001",
+      "optimization": "linear programming with SciPy/HiGHS"
+    },
+    "published_february": {
+      "original_cost_brl_animal_day": 45.62,
+      "optimized_cost_brl_animal_day": 37.25,
+      "original_predicted_milk_kg_day": 40.85,
+      "optimized_predicted_milk_kg_day": 37.08,
+      "body_weight_table_5_kg": 622.66,
+      "body_weight_description_kg": 662.66,
+      "body_weight_difference_kg": 40.0
+    },
+    "inputs": {
+      "available": [
+        "published February results",
+        "two reported body weights"
+      ],
+      "missing": [
+        "complete animal/ration inputs and source-linked composition and prices needed to reproduce with NutriPlan"
+      ],
+      "contradictions": [
+        "body weight 622.66 kg in Table 5 versus 662.66 kg in experiment description"
+      ]
+    },
+    "outputs": {
+      "source": "IFG NRC 2001/HiGHS study",
+      "reproduced_in_nutriplan": false
+    },
+    "validation_level": "methodological_reference_not_reproduced",
+    "economic_comparison_allowed": false
+  },
+  "case_b_guelph_rufas": {
+    "fixture": "tests/fixtures/guelph_lactating_cow_reference.json",
+    "scenario_file": "data/reference_rations.json",
+    "upstream_source": {
+      "repository": "CNM-University-of-Guelph/NASEM-Model-Python",
+      "version": "1.0.2",
+      "commit": "9b0b28ef9a6013ac278bde72e58e01395c2ac6dc",
+      "scenario": "lactating_cow_test"
+    },
+    "engine_source": {
+      "name": "RuFaS RationOptimizer",
+      "commit": "6e5ec486a5fceb2532cbdb9281c0426993884771"
+    },
+    "standard": "NASEM_2021",
+    "inputs": {
+      "animal": {
+        "category": "first_lactation_cow",
+        "body_weight_kg": 624.795,
+        "mature_body_weight_kg": 700,
+        "body_condition_score_5": 3,
+        "days_in_milk": 100,
+        "day_of_pregnancy": 46,
+        "milk_production_kg_day": 25.062,
+        "milk_fat_percent": 4.55,
+        "milk_true_protein_percent": 3.66,
+        "milk_lactose_percent": 4.85,
+        "housing": "Barn",
+        "distance_m": 0
+      },
+      "previous_ration": {
+        "source": "nasem_dairy 1.0.2 lactating_cow_test",
+        "unit": "kg dry matter/day",
+        "feeds": [
+          {
+            "rufas_id": 1,
+            "kg_dm_day": 8.2101564407
+          },
+          {
+            "rufas_id": 31,
+            "kg_dm_day": 6.7323288918
+          },
+          {
+            "rufas_id": 51,
+            "kg_dm_day": 5.4734377861
+          },
+          {
+            "rufas_id": 46,
+            "kg_dm_day": 4.1050782204
+          }
+        ]
+      },
+      "additional_rufas_parameters": {
+        "calving_interval_days": 400,
+        "process_phosphorus_requirement_g_day": 0.45,
+        "source": "RuFaS freestall profile and calculator test; not Guelph inputs"
+      },
+      "candidate_feeds": {
+        "composition_source": "installed RuFaS NASEM feed library",
+        "price_unit": "currency/kg as-fed input",
+        "inclusion_bounds_unit": "kg dry matter/day",
+        "records": [
+          {
+            "rufas_id": 51,
+            "price": 0.25,
+            "minimum_kg_dm_day": 4,
+            "maximum_kg_dm_day": 15
+          },
+          {
+            "rufas_id": 18,
+            "price": 1.2,
+            "minimum_kg_dm_day": 0,
+            "maximum_kg_dm_day": 7
+          },
+          {
+            "rufas_id": 43,
+            "price": 1.17,
+            "minimum_kg_dm_day": 0,
+            "maximum_kg_dm_day": 7
+          },
+          {
+            "rufas_id": 167,
+            "price": 2.4,
+            "minimum_kg_dm_day": 0,
+            "maximum_kg_dm_day": 6
+          },
+          {
+            "rufas_id": 33,
+            "price": 1.4,
+            "minimum_kg_dm_day": 0,
+            "maximum_kg_dm_day": 5
+          }
+        ]
+      }
+    },
+    "upstream_reference_outputs": {
+      "target_net_energy_mcal_day": 33.9651725570238,
+      "target_metabolizable_protein_g_day": 1989.9851724101288,
+      "methane_g_day": 529.4566817720217,
+      "urinary_nitrogen_g_day": 412.60451118102117,
+      "diet_ndf_percent": 33.03968744955082,
+      "interpretation": "nasem_dairy model outputs, not animal measurements"
+    },
+    "nutritional_assessment": {
+      "source": "RuFaS native NASEM requirements and RationOptimizer",
+      "execution": {
+        "method": "POST",
+        "route": "/api/rufas-native",
+        "http_status": 200,
+        "application_status": "success",
+        "solver": "SciPy SLSQP through RuFaS RationOptimizer",
+        "solver_status": 0
+      },
+      "feed_library_sha256": "32f313149abb9034dcca6390f49500e7173e883ed4fbf20200ba92eed0d2ec66",
+      "constraints_selected": 11,
+      "fixture_tests_verify_feasibility": true,
+      "reproduction_tolerance": {
+        "absolute": 0.0001,
+        "unit": "per reported result",
+        "basis": "same pinned local RuFaS/feed-library environment; includes the optimizer feasibility tolerance of 1e-4; numerical regression only"
+      },
+      "native_optimization_reference": {
+        "dmi_kg_dm_day": 21.902897804979432,
+        "cost_day": 26.425466348741608,
+        "cost_month_30_days": 792.7639904622482,
+        "currency": null,
+        "cost_interpretation": "technical objective value from unverified illustrative candidate prices; not a monetary or economic result",
+        "requirements": {
+          "net_energy": {
+            "value": 34.36381141382796,
+            "unit": "Mcal/day"
+          },
+          "metabolizable_protein": {
+            "value": 1919.5847865636,
+            "unit": "g/day"
+          },
+          "calcium": {
+            "value": 48.984085416181216,
+            "unit": "g/day"
+          },
+          "phosphorus": {
+            "value": 47.2761951695892,
+            "unit": "g/day"
+          },
+          "dry_matter": {
+            "value": 21.69644261265405,
+            "unit": "kg/day"
+          }
+        },
+        "direct_nutrient_supply": {
+          "dry_matter": {
+            "value": 21.902897804979432,
+            "unit": "kg/day"
+          },
+          "ndf": {
+            "value": 7.226902963560063,
+            "unit": "kg/day"
+          },
+          "crude_protein": {
+            "value": 3.6596615984592504,
+            "unit": "kg/day"
+          },
+          "starch": {
+            "value": 5.044612505509222,
+            "unit": "kg/day"
+          },
+          "fat": {
+            "value": 0.5808641013082837,
+            "unit": "kg/day"
+          },
+          "calcium": {
+            "value": 0.0994151424697787,
+            "unit": "kg/day"
+          },
+          "phosphorus": {
+            "value": 0.07052027896352743,
+            "unit": "kg/day"
+          }
+        },
+        "ingredients": [
+          {
+            "rufas_id": 18,
+            "name": "Bermudagrass hay",
+            "kg_dm_day": 0.0,
+            "kg_as_fed_day": 0.0,
+            "percent_of_dmi": 0.0
+          },
+          {
+            "rufas_id": 33,
+            "name": "Citrus pulp, dry",
+            "kg_dm_day": 2.4865261488244834,
+            "kg_as_fed_day": 2.819190644925718,
+            "percent_of_dmi": 11.352498518525678
+          },
+          {
+            "rufas_id": 43,
+            "name": "Corn grain dry, coarse grind",
+            "kg_dm_day": 0.0,
+            "kg_as_fed_day": 0.0,
+            "percent_of_dmi": 0.0
+          },
+          {
+            "rufas_id": 51,
+            "name": "Corn silage, typical",
+            "kg_dm_day": 15.0,
+            "kg_as_fed_day": 42.41961482989735,
+            "percent_of_dmi": 68.48408887973665
+          },
+          {
+            "rufas_id": 167,
+            "name": "Soybean meal, solvent 48CP",
+            "kg_dm_day": 4.416371656154949,
+            "kg_as_fed_day": 4.94737322432136,
+            "percent_of_dmi": 20.163412601737683
+          }
+        ],
+        "constraints": [
+          {
+            "name": "calcium_constraint",
+            "slack": 6.56860095e-08,
+            "unit": "g/day",
+            "sense": "digestible supply - calcium requirement >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "phosphorus_constraint",
+            "slack": 1.048800016e-07,
+            "unit": "g/day",
+            "sense": "digestible supply - max(phosphorus requirement, process-based phosphorus) >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "protein_constraint_lower",
+            "slack": 439.29901027912024,
+            "unit": "g/day",
+            "sense": "metabolizable protein supply - NASEM MP requirement >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "protein_constraint_upper",
+            "slack": 520.4933830026798,
+            "unit": "g/day",
+            "sense": "1.5 × initial MP requirement - metabolizable protein supply >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "NDF_constraint_lower",
+            "slack": 7.995190992111965,
+            "unit": "percentage points",
+            "sense": "ration NDF percent - 25 >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "NDF_constraint_upper",
+            "slack": 12.004809007888035,
+            "unit": "percentage points",
+            "sense": "45 - ration NDF percent >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "forage_NDF_constraint",
+            "slack": 13.031222419365005,
+            "unit": "percentage points",
+            "sense": "forage NDF percent of DMI - 15 >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "fat_constraint",
+            "slack": 4.348003417263676,
+            "unit": "percentage points",
+            "sense": "7 - ration fat percent of DMI >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "DMI_constraint_upper",
+            "slack": 6.302477591470833,
+            "unit": "kg DM/day",
+            "sense": "initial DMI × (1 + native fraction) - supplied DMI >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "DMI_constraint_lower",
+            "slack": 6.7153879761215975,
+            "unit": "kg DM/day",
+            "sense": "supplied DMI - requirement DMI × (1 - native fraction) >= 0",
+            "tolerance": 0.0001
+          },
+          {
+            "name": "NASEM_net_energy_constraint",
+            "slack": 5.956522854464836,
+            "unit": "Mcal/day",
+            "sense": "native NASEM net-energy supply - total energy requirement >= 0",
+            "tolerance": 0.0001
+          }
+        ],
+        "emissions_from_previous_ration": {
+          "methane": {
+            "value": 554.5531710687935,
+            "unit": "g/day",
+            "method": "RuFaS IPCC lactating-cow model"
+          },
+          "urinary_nitrogen": {
+            "value": 0.3317672152199782,
+            "unit": "kg/day",
+            "method": "RuFaS lactating-cow manure model"
+          },
+          "interpretation": "model-derived from the explicit Guelph demonstration ration; passed as pen-average inputs to native optimization, not emissions measured for a farm or the optimized ration"
+        }
+      },
+      "upstream_comparison": {
+        "interpretation": "descriptive cross-implementation differences only; input pathways and output semantics differ, so these are not parity tolerances",
+        "net_energy_requirement_difference_rufas_minus_guelph_mcal_day": 0.39863885680416,
+        "metabolizable_protein_difference_rufas_minus_guelph_g_day": -70.4003858465288,
+        "rufas_does_not_publish_direct_standalone_energy_or_MP_supply": true
+      },
+      "previous_ration_assessment": {
+        "native_feed_composition_available": true,
+        "reported_dry_matter_kg_day": 24.521001339,
+        "reported_ndf_percent_dm": 33.03968744955081,
+        "full_nutritional_adequacy_evaluated_by_api": false,
+        "energy_and_MP_supply_reported_as_direct_sums": false,
+        "status": "composition and emission inputs are reproducible; not an on-farm ration record or complete adequacy assessment"
+      },
+      "biological_validation": false
+    },
+    "missing_data": {
+      "previous_ration_prices": [
+        {
+          "rufas_id": 1,
+          "required_source": "dated quote for exact RuFaS feed ID; currency, region and as-fed unit"
+        },
+        {
+          "rufas_id": 31,
+          "required_source": "dated quote for exact RuFaS feed ID; currency, region and as-fed unit"
+        },
+        {
+          "rufas_id": 46,
+          "required_source": "dated quote for exact RuFaS feed ID; currency, region and as-fed unit"
+        }
+      ],
+      "candidate_price_provenance": {
+        "rufas_ids": [
+          51,
+          18,
+          43,
+          167,
+          33
+        ],
+        "missing": [
+          "currency in the structured price record",
+          "geography",
+          "eligible non-demonstration price source for used feeds",
+          "verified market equivalence to exact RuFaS feed IDs"
+        ],
+        "fixture_status": "legacy unspecified illustrative values, not price observations",
+        "date_detail": "Only ID 43 carries a date in the UI label (2026-08-31); other candidate records lack a date. ID 43 remains demonstrative because currency is not structured and exact feed equivalence is unverified.",
+        "fixture_ui_value_conflict": {
+          "rufas_id": 43,
+          "fixture_price_as_fed": 1.17,
+          "ui_seed_price_as_fed": 1.1705,
+          "status": "both illustrative; unresolved and excluded"
+        }
+      }
+    },
+    "outputs": {
+      "native_solver_reproduced_by_http_integration_test": true,
+      "native_outputs_are_farm_observations": false,
+      "economic_savings_calculated": false
+    },
+    "economic_comparison_allowed": false,
+    "validation_level": "computational_demonstration_not_independent_biological_validation"
+  },
+  "verification_record": {
+    "date": "2026-11-08",
+    "focused_command": "env -u DISPLAY MPLBACKEND=Agg MPLCONFIGDIR=/tmp/nutriplan-mpl PYTHONDONTWRITEBYTECODE=1 ../venv/bin/python -m unittest tests.test_experimental_rufas -v",
+    "focused_tests_passed": 2,
+    "full_suite_command": "env -u DISPLAY MPLBACKEND=Agg MPLCONFIGDIR=/tmp/nutriplan-mpl PYTHONDONTWRITEBYTECODE=1 ../venv/bin/python -m unittest discover -s tests -q",
+    "full_suite_tests_passed": 64,
+    "full_suite_failures": 0,
+    "http_requests_in_full_suite": {
+      "POST /api/rufas-native": 3,
+      "GET /api/health": 1,
+      "http_status": 200
+    },
+    "headless": true
+  },
+  "economic_validation": {
+    "method": {
+      "service": "services/economic_comparison.py::compare_diets_economically",
+      "http_route": "POST /api/economic-comparison",
+      "optimizer_invoked": false,
+      "cost_formula": "sum(kg_DM_day / feed_DM_fraction * price_per_kg_as_fed)",
+      "known_price_conversions": {
+        "kg_as_fed": "amount is already currency/kg as-fed",
+        "kg_dm": "price_per_kg_as_fed = amount_per_kg_DM * RuFaS DM fraction",
+        "metric_ton_as_fed": "price_per_kg_as_fed = amount_per_metric_ton / 1000"
+      },
+      "comparability_requirements": [
+        "exact RuFaS feed ID/name where supplied",
+        "positive-quantity coverage in both diets",
+        "one currency",
+        "one reference date",
+        "one geography",
+        "one eligible price-source type",
+        "documented source and known unit"
+      ],
+      "monthly_estimate_days": 30,
+      "independent_provenance_verification": false,
+      "iofc_requirements": [
+        "documented milk price with unit, currency, source, date and geography",
+        "separate production for each diet with source and basis",
+        "matching date, currency and geography"
+      ]
+    },
+    "guelph": {
+      "case_source": "tests/fixtures/guelph_lactating_cow_reference.json and data/experimental_validation_manifest.json case_b_guelph_rufas",
+      "baseline_feed_ids": [
+        1,
+        31,
+        51,
+        46
+      ],
+      "optimized_positive_quantity_feed_ids": [
+        33,
+        51,
+        167
+      ],
+      "missing_previous_ration_price_ids": [
+        1,
+        31,
+        46
+      ],
+      "ineligible_prices_for_used_feed_ids": [
+        33,
+        51,
+        167
+      ],
+      "ineligible_prices_for_unused_candidate_feed_ids": [
+        18,
+        43
+      ],
+      "economic_comparison_available": false,
+      "economic_results": null,
+      "iofc_available": false,
+      "iofc_missing": [
+        "documented milk price",
+        "milk production specifically associated with baseline ration",
+        "milk production specifically associated with optimized ration"
+      ],
+      "price_audit": [
+        {
+          "rufas_id": 1,
+          "feed_name": "Alfalfa meal",
+          "dm_percent": 90.749,
+          "baseline_use_kg_dm_day": 8.2101564407,
+          "price_record": null,
+          "status": "missing",
+          "required_source": "dated comparable quote or actual cost for exact RuFaS feed ID, with currency, commercial unit, region and source"
+        },
+        {
+          "rufas_id": 31,
+          "feed_name": "Canola meal",
+          "dm_percent": 89.128,
+          "baseline_use_kg_dm_day": 6.7323288918,
+          "price_record": null,
+          "status": "missing",
+          "required_source": "dated comparable quote or actual cost for exact RuFaS feed ID, with currency, commercial unit, region and source"
+        },
+        {
+          "rufas_id": 51,
+          "feed_name": "Corn silage, typical",
+          "dm_percent": 35.361,
+          "baseline_use_kg_dm_day": 5.4734377861,
+          "optimized_use_kg_dm_day": 15.0,
+          "candidate_amount": 0.25,
+          "candidate_currency": null,
+          "candidate_unit": "kg_as_fed",
+          "candidate_date": null,
+          "candidate_source_type": "demonstration",
+          "status": "ineligible_demonstrative_price"
+        },
+        {
+          "rufas_id": 46,
+          "feed_name": "Corn grain HM, coarse grind",
+          "dm_percent": 72.267,
+          "baseline_use_kg_dm_day": 4.1050782204,
+          "price_record": null,
+          "status": "missing",
+          "required_source": "dated comparable quote or actual cost for exact RuFaS feed ID, with currency, commercial unit, region and source"
+        },
+        {
+          "rufas_id": 33,
+          "feed_name": "Citrus pulp, dry",
+          "dm_percent": 88.2,
+          "optimized_use_kg_dm_day": 2.4865261488244834,
+          "candidate_amount": 1.4,
+          "candidate_currency": null,
+          "candidate_unit": "kg_as_fed",
+          "candidate_date": null,
+          "candidate_source_type": "demonstration",
+          "status": "ineligible_demonstrative_price"
+        },
+        {
+          "rufas_id": 167,
+          "feed_name": "Soybean meal, solvent 48CP",
+          "dm_percent": 89.267,
+          "optimized_use_kg_dm_day": 4.416371656154949,
+          "candidate_amount": 2.4,
+          "candidate_currency": null,
+          "candidate_unit": "kg_as_fed",
+          "candidate_date": null,
+          "candidate_source_type": "demonstration",
+          "status": "ineligible_demonstrative_price"
+        }
+      ],
+      "candidate_price_records": [
+        {
+          "rufas_id": 51,
+          "amount": 0.25,
+          "currency": null,
+          "unit": "kg_as_fed",
+          "date": null,
+          "source_type": "demonstration",
+          "source": "Hypothetical (replace)"
+        },
+        {
+          "rufas_id": 18,
+          "amount": 1.2,
+          "currency": null,
+          "unit": "kg_as_fed",
+          "date": null,
+          "source_type": "demonstration",
+          "source": "Hypothetical (replace)"
+        },
+        {
+          "rufas_id": 43,
+          "amount": 1.1705,
+          "currency": null,
+          "unit": "kg_as_fed",
+          "date": "2026-08-31",
+          "source_type": "demonstration",
+          "source": "UI text names CEPEA corn ESALQ/B3 at R$70.23/60 kg; the structured record does not certify currency or exact equivalence to RuFaS feed ID 43 (Corn grain dry, coarse grind)",
+          "fixture_amount": 1.17,
+          "ui_seed_amount": 1.1705,
+          "value_conflict_note": "tests/fixtures/guelph_lactating_cow_reference.json records 1.17; the former index.html UI seed recorded 1.1705 before its removal. Both historical values were illustrative and ineligible; neither is treated as a price observation."
+        },
+        {
+          "rufas_id": 167,
+          "amount": 2.4,
+          "currency": null,
+          "unit": "kg_as_fed",
+          "date": null,
+          "source_type": "demonstration",
+          "source": "Hypothetical (not a soybean indicator)"
+        },
+        {
+          "rufas_id": 33,
+          "amount": 1.4,
+          "currency": null,
+          "unit": "kg_as_fed",
+          "date": null,
+          "source_type": "demonstration",
+          "source": "Hypothetical (replace)"
+        }
+      ],
+      "reproduced_guelph_technical_objective_is_economic_price_evidence": false,
+      "economic_validation_status": "unavailable_incomplete_and_ineligible_prices",
+      "comparison_execution": {
+        "method": "POST /api/economic-comparison using the versioned baseline ration and positive-quantity RuFaS output ingredients",
+        "http_status": 200,
+        "status": "missing_prices",
+        "missing_price_ids": [
+          1,
+          31,
+          33,
+          46,
+          51,
+          167
+        ],
+        "economic_comparison_available": false,
+        "economic_results": null,
+        "iofc_status": "unavailable",
+        "interpretation": "Real Guelph fixture/manifest inputs were checked; this is an availability result, not a calculated economic outcome."
+      }
+    },
+    "ifg_2026": {
+      "economic_comparison_allowed": false,
+      "status": "methodological_reference_not_reproduced",
+      "reason": "Published costs are preserved as study results; complete price, ration and model inputs are unavailable to reproduce them in NutriPlan."
+    },
+    "software_logic_fixtures": {
+      "synthetic_test_values_are_experimental_results": false,
+      "coverage": [
+        "missing prices",
+        "currency/date/geography/source type mismatch",
+        "as-fed to dry-matter conversion",
+        "documented actual costs",
+        "30-day and batch projections",
+        "IOFC input requirements"
+      ]
+    },
+    "verification": {
+      "focused_command": "env -u DISPLAY MPLBACKEND=Agg MPLCONFIGDIR=/tmp/nutriplan-mpl PYTHONDONTWRITEBYTECODE=1 ../venv/bin/python -m unittest tests.test_prices tests.test_economic_comparison tests.test_economic_api -v",
+      "focused_tests_passed": 15,
+      "focused_failures": 0,
+      "full_suite_command": "env -u DISPLAY MPLBACKEND=Agg MPLCONFIGDIR=/tmp/nutriplan-mpl PYTHONDONTWRITEBYTECODE=1 ../venv/bin/python -m unittest discover -s tests -q",
+      "full_suite_tests_passed": 75,
+      "full_suite_failures": 0,
+      "http_requests_to_economic_comparison_in_suite": 2,
+      "headless": true,
+      "html_inline_script_node_check": "passed"
+    }
+  }
+}

@@ -1,0 +1,521 @@
+"""Native NASEM feed loading and ration optimization through installed RuFaS."""
+from __future__ import annotations
+
+import csv
+import math
+from dataclasses import fields
+from pathlib import Path
+
+from RUFAS.biophysical.animal.data_types.animal_combination import AnimalCombination
+from RUFAS.biophysical.animal.data_types.animal_types import AnimalType
+from RUFAS.biophysical.animal.ration.ration_optimizer import RationOptimizer
+from RUFAS.data_structures.feed_storage_to_animal_connection import (
+    FeedCategorization, FeedComponentType, NASEMFeed, NutrientStandard,
+)
+from RUFAS.units import MeasurementUnits
+
+from services.nutrition import calculate
+from services.emissions import (
+    calculate_candidate_ration_emissions, calculate_previous_ration_emissions, previous_ration_ndf_percent,
+)
+from RUFAS.biophysical.animal.nutrients.nutrition_supply_calculator import FeedInRation, NutritionSupplyCalculator
+from RUFAS.biophysical.animal.animal_module_constants import AnimalModuleConstants
+from services.prices import comparison_status, resolve_price
+
+FEED_CSV = Path(__file__).resolve().parents[2] / 'input/data/feed/NASEM_Comp_with_TDN.csv'
+ENUMS = {'Fd_Category': FeedCategorization, 'feed_type': FeedComponentType, 'units': MeasurementUnits}
+BOOLEANS = {'is_fat', 'is_wetforage'}
+OPERATIONS = {'amount_available', 'on_farm_cost', 'purchase_cost', 'buffer'}
+
+# Structural mapping is explicit; the heifer route remains gated until its
+# emissions and full scientific validation are supplied.
+ANIMAL_MODELS = {
+    'multiparous_lactating_cow': (AnimalType.LAC_COW, AnimalCombination.LAC_COW, 'lactating'),
+    'first_lactation_cow': (AnimalType.LAC_COW, AnimalCombination.LAC_COW, 'lactating'),
+    'heifer_I': (AnimalType.HEIFER_I, AnimalCombination.GROWING, 'growth'),
+}
+OPTIMIZATION_READY = {'multiparous_lactating_cow', 'first_lactation_cow'}
+
+
+class CandidateRationOptimizer(RationOptimizer):
+    """Use native lactating-cow equations with candidate-specific NDF and emissions."""
+
+    def __init__(self, animal_payload, calculate_candidate_emissions=True, seed=None):
+        super().__init__()
+        self.animal_payload = animal_payload
+        self.calculate_candidate_emissions = calculate_candidate_emissions
+        self.candidate_seed = seed
+
+    def _build_initial_value(self, previous_ration, ration_config):
+        if previous_ration is None and self.candidate_seed is not None:
+            return list(self.candidate_seed)
+        return super()._build_initial_value(previous_ration, ration_config)
+
+    def set_constraints(self, ration_config):
+        super().set_constraints(ration_config)
+        for constraints in (self.cow_constraints, self.heifer_constraints):
+            for constraint in constraints:
+                function_name = constraint['fun'].__name__
+                if function_name == 'NASEM_net_energy_constraint':
+                    constraint['fun'] = self._candidate_net_energy_constraint
+                elif function_name == 'protein_constraint_lower':
+                    constraint['fun'] = self._candidate_protein_lower
+                elif function_name == 'protein_constraint_upper':
+                    constraint['fun'] = self._candidate_protein_upper
+
+    @staticmethod
+    def _candidate_feeds(decision_vector, ration_configuration):
+        return RationOptimizer.convert_decision_vec_to_feeds(ration_configuration, decision_vector)
+
+    @staticmethod
+    def _candidate_ndf(feeds):
+        dry_matter = sum(feed.amount for feed in feeds)
+        if dry_matter <= 0 or not math.isfinite(dry_matter):
+            return math.nan
+        ndf_supply = NutritionSupplyCalculator._calculate_nutritive_content(feeds, 'NDF')
+        return 100 * ndf_supply / dry_matter
+
+    def _candidate_requirements(self, ndf_percentage):
+        parameters = dict(self.animal_payload.get('parameters') or {})
+        parameters['ndf_percentage'] = ndf_percentage
+        result = calculate({**self.animal_payload, 'parameters': parameters}, include_native=True)
+        if result.get('status') != 'success':
+            return None
+        return result['_native_requirements']
+
+    def _candidate_emission_values(self, feeds, ration_configuration):
+        if self.calculate_candidate_emissions:
+            emissions = calculate_candidate_ration_emissions(feeds, {
+                'animal_category': self.animal_payload['animal_category'],
+                'body_weight_kg': ration_configuration.pen_average_body_weight,
+                'parameters': self.animal_payload['parameters'],
+            })
+            return emissions['enteric_methane_g_day'], emissions['urine_nitrogen_kg_day']
+        return (ration_configuration.pen_average_enteric_methane,
+                ration_configuration.pen_average_urine_nitrogen)
+
+    def _candidate_net_energy_constraint(self, decision_vector, ration_configuration):
+        feeds = self._candidate_feeds(decision_vector, ration_configuration)
+        dry_matter = sum(decision_vector)
+        total_starch = sum(feed.amount * feed.info.starch / 100 for feed in feeds)
+        methane, urine_nitrogen = self._candidate_emission_values(feeds, ration_configuration)
+        metabolizable_energy = NutritionSupplyCalculator.calculate_NASEM_metabolizable_energy(
+            feeds=feeds, dry_matter_intake=dry_matter,
+            body_weight=ration_configuration.pen_average_body_weight,
+            total_starch=total_starch, enteric_methane=methane,
+            urinary_nitrogen=urine_nitrogen,
+        )
+        net_energy = NutritionSupplyCalculator.calculate_NASEM_net_energy(metabolizable_energy)
+        return net_energy - ration_configuration.animal_requirements.total_energy_requirement
+
+    def _candidate_protein_parameters(self, decision_vector, ration_configuration):
+        feeds = self._candidate_feeds(decision_vector, ration_configuration)
+        ndf_percentage = self._candidate_ndf(feeds)
+        if not math.isfinite(ndf_percentage):
+            return math.nan, math.nan
+        requirements = self._candidate_requirements(ndf_percentage)
+        if requirements is None:
+            return math.nan, math.nan
+        protein_supply, _ = RationOptimizer._calculate_protein_constraint_parameters(
+            decision_vector, ration_configuration, use_initial_requirement=False
+        )
+        return protein_supply, requirements.metabolizable_protein
+
+    def _candidate_protein_lower(self, decision_vector, ration_configuration):
+        supply, requirement = self._candidate_protein_parameters(decision_vector, ration_configuration)
+        return supply - requirement
+
+    def _candidate_protein_upper(self, decision_vector, ration_configuration):
+        supply, requirement = self._candidate_protein_parameters(decision_vector, ration_configuration)
+        return requirement * AnimalModuleConstants.PROTEIN_UPPER_LIMIT_FACTOR - supply
+
+
+def animal_model(animal_category):
+    """Resolve physiology, RuFaS pen group, and requirement pathway explicitly."""
+    try:
+        return ANIMAL_MODELS[animal_category]
+    except (KeyError, TypeError) as error:
+        raise ValueError(f'Unsupported animal category: {animal_category}.') from error
+
+
+def resolve_emissions(payload, animal, library):
+    """Resolve lactating-cow emissions only for lactating animal models."""
+    animal_type, _, calculation_type = animal_model(payload.get('animal_category'))
+    if calculation_type != 'lactating' or animal_type is not AnimalType.LAC_COW:
+        raise ValueError('Emission pathway is not validated for this animal category.')
+    emission_keys = ('enteric_methane_g_day', 'urine_nitrogen_kg_day')
+    provided = [key for key in emission_keys if payload.get(key) is not None and payload.get(key) != '']
+    if payload.get('previous_ration') is not None and provided:
+        raise ValueError('Choose either a previous ration or explicit emission values, not both.')
+    if payload.get('previous_ration') is not None:
+        emissions = calculate_previous_ration_emissions(payload['previous_ration'], library, animal, build_feed)
+        source = payload.get('previous_ration_source')
+        if isinstance(source, str) and source.strip():
+            emissions['source_reference'] = source.strip()
+        return emissions
+    if len(provided) != len(emission_keys):
+        return None
+    source = payload.get('emission_source')
+    if not isinstance(source, str) or not source.strip():
+        raise ValueError('A documented emission source is required for explicit values.')
+    methane, urine_nitrogen = (float(payload[key]) for key in emission_keys)
+    if not all(math.isfinite(value) and value >= 0 for value in (methane, urine_nitrogen)):
+        raise ValueError('Invalid methane or urinary nitrogen measurement.')
+    return {'enteric_methane_g_day': methane, 'urine_nitrogen_kg_day': urine_nitrogen,
+            'provenance': 'user_supplied', 'source_reference': source.strip()}
+
+
+def feed_library():
+    """Read the installed RuFaS NASEM feed library, rejecting duplicate identifiers."""
+    with FEED_CSV.open(newline='', encoding='utf-8-sig') as stream:
+        rows = list(csv.DictReader(stream))
+    library = {}
+    for row in rows:
+        identifier = int(row['rufas_id'])
+        if identifier in library:
+            raise ValueError(f'Duplicate RuFaS feed identifier: {identifier}')
+        library[identifier] = row
+    return library
+
+
+def available_feeds():
+    return [{'id': identifier, 'name': row['Name'], 'category': row['Fd_Category'],
+             'dry_matter_percent': float(row['DM']),
+             'crude_protein_percent_dm': float(row['CP']) if row['CP'] else None,
+             'ndf_percent_dm': float(row['NDF']) if row['NDF'] else None,
+             'starch_percent_dm': float(row['starch']) if row['starch'] else None,
+             'fat_percent_dm': float(row['EE']) if row['EE'] else None,
+             'composition_source': str(FEED_CSV.relative_to(FEED_CSV.parents[3]))}
+            for identifier, row in feed_library().items()]
+
+
+def build_feed(item, library=None):
+    """Use original NASEM composition and explicit UI price/bounds in kg dry matter."""
+    library = library or feed_library()
+    try:
+        identifier = int(item['rufas_id'])
+        row = library[identifier]
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError('Select a valid RuFaS NASEM feed identifier.') from error
+    try:
+        price_record = resolve_price(item, library)
+        if price_record is None:
+            raise ValueError('Price is required.')
+        price_as_fed = price_record['price_as_fed']
+        minimum = float(item.get('minimum_kg_dm', 0))
+        maximum = float(item['maximum_kg_dm'])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f'Feed {identifier}: invalid price or inclusion bounds.') from error
+    dry_matter_fraction = float(row['DM']) / 100
+    if not all(math.isfinite(value) for value in (price_as_fed, minimum, maximum)) or price_as_fed < 0 or dry_matter_fraction <= 0 or minimum < 0 or maximum < minimum:
+        raise ValueError(f'Feed {identifier}: invalid dry matter, price, or bounds.')
+    data = {'rufas_id': identifier, 'amount_available': 0.0,
+            'purchase_cost': price_as_fed / dry_matter_fraction,
+            'on_farm_cost': 0.0, 'buffer': 0.0,
+            'lower_limit': minimum, 'limit': maximum}
+    for field in fields(NASEMFeed):
+        key = field.name
+        if key in data:
+            continue
+        raw = row.get(key)
+        if raw is None or raw == '':
+            raise ValueError(f'Feed {identifier}: missing NASEM field {key}.')
+        if key in ENUMS:
+            data[key] = ENUMS[key](raw)
+        elif key in BOOLEANS:
+            if raw.upper() not in {'TRUE', 'FALSE'}:
+                raise ValueError(f'Feed {identifier}: invalid {key}.')
+            data[key] = raw.upper() == 'TRUE'
+        elif key == 'Name':
+            data[key] = raw
+        else:
+            value = float(raw)
+            if not math.isfinite(value):
+                raise ValueError(f'Feed {identifier}: invalid {key}.')
+            data[key] = value
+    return NASEMFeed(**data)
+
+
+def prepare_animal_payload(payload):
+    """Derive previous-ration NDF and reject conflicting manual NDF."""
+    if payload.get('previous_ration') is not None:
+        library = feed_library()
+        derived_ndf = previous_ration_ndf_percent(payload['previous_ration'], library, build_feed)
+        parameters = dict(payload.get('parameters') or {})
+        supplied_ndf = parameters.get('ndf_percentage')
+        if supplied_ndf is not None and supplied_ndf != '':
+            try:
+                difference = abs(float(supplied_ndf) - derived_ndf)
+            except (TypeError, ValueError) as error:
+                raise ValueError('Invalid previous-ration NDF value.') from error
+            if not math.isfinite(difference) or difference > 1e-6:
+                raise ValueError('Previous-ration NDF does not match the RuFaS feed composition.')
+        parameters['ndf_percentage'] = derived_ndf
+        payload = {**payload, 'parameters': parameters}
+    return payload
+
+
+def _allocate_candidate_seed(feeds, target_dry_matter):
+    """Distribute the native DMI target across available bounds for a deterministic solver start."""
+    lower = [float(feed.lower_limit) for feed in feeds]
+    upper = [float(feed.limit) for feed in feeds]
+    lower_total = sum(lower)
+    capacity = [max(0.0, high - low) for low, high in zip(lower, upper)]
+    total_capacity = sum(capacity)
+    if not math.isfinite(target_dry_matter) or target_dry_matter <= 0:
+        raise ValueError('RuFaS returned an invalid dry matter intake requirement.')
+    target = min(max(target_dry_matter, lower_total), sum(upper))
+    if total_capacity <= 0:
+        return lower
+    fraction = (target - lower_total) / total_capacity
+    return [low + fraction * available for low, available in zip(lower, capacity)]
+
+
+def _payload_with_ndf(payload, ndf_percentage):
+    parameters = dict(payload.get('parameters') or {})
+    parameters['ndf_percentage'] = ndf_percentage
+    return {**payload, 'parameters': parameters}
+
+
+def _explicit_emissions(payload):
+    source = payload.get('emission_source')
+    if not isinstance(source, str) or not source.strip():
+        raise ValueError('A documented emission source is required for explicit values.')
+    try:
+        methane = float(payload['enteric_methane_g_day'])
+        urine_nitrogen = float(payload['urine_nitrogen_kg_day'])
+    except (TypeError, ValueError) as error:
+        raise ValueError('Invalid methane or urinary nitrogen measurement.') from error
+    if not all(math.isfinite(value) and value >= 0 for value in (methane, urine_nitrogen)):
+        raise ValueError('Invalid methane or urinary nitrogen measurement.')
+    return {'enteric_methane_g_day': methane, 'urine_nitrogen_kg_day': urine_nitrogen,
+            'provenance': 'user_supplied', 'source_reference': source.strip()}
+
+
+def optimize_native(payload):
+    """Attempt native NASEM ration optimization with candidate-specific dependencies when available."""
+    category = payload.get('animal_category')
+    try:
+        _, group, _ = animal_model(category)
+    except ValueError as error:
+        return {'ok': False, 'status': 'unsupported_category', 'message': str(error)}
+    if category not in OPTIMIZATION_READY:
+        return {'ok': False, 'status': 'unsupported_category',
+                'message': 'HEIFER_I maps to RuFaS GROWING, but its complete growth and emission pathway is not validated.'}
+
+    has_previous_ration = payload.get('previous_ration') is not None
+    emission_keys = ('enteric_methane_g_day', 'urine_nitrogen_kg_day')
+    provided = [key for key in emission_keys if payload.get(key) is not None and payload.get(key) != '']
+    if has_previous_ration and provided:
+        raise ValueError('Choose either a previous ration or explicit emission values, not both.')
+    missing_emissions = [key for key in emission_keys if key not in provided]
+    if provided and missing_emissions:
+        return {'ok': False, 'status': 'incomplete_input', 'missing_inputs': missing_emissions,
+                'message': 'Provide both methane and urinary nitrogen, or leave both blank for candidate-ration calculation.'}
+
+    parameters = dict(payload.get('parameters') or {})
+    supplied_ndf = parameters.get('ndf_percentage')
+    candidate_ndf_mode = not has_previous_ration and supplied_ndf in (None, '')
+    if not has_previous_ration and not candidate_ndf_mode and not provided:
+        return {'ok': False, 'status': 'incomplete_input', 'missing_inputs': list(emission_keys),
+                'message': 'Native NASEM energy requires a previous ration, candidate-ration calculation, or documented emissions.'}
+    explicit_emissions = _explicit_emissions(payload) if provided else None
+
+    if has_previous_ration:
+        payload = prepare_animal_payload(payload)
+
+    selected = payload.get('feeds')
+    if not isinstance(selected, list) or len(selected) < 2:
+        return {'ok': False, 'status': 'incomplete_input', 'message': 'Select at least two NASEM feeds.'}
+    library = feed_library()
+    if any(not isinstance(item, dict) for item in selected):
+        raise ValueError('Each selected feed must be an object.')
+    selected_prices = {int(item['rufas_id']): resolve_price(item, library) for item in selected if item.get('available', True)}
+    candidate_currencies = {record['currency'] for record in selected_prices.values() if record is not None}
+    if len(candidate_currencies) > 1:
+        raise ValueError('Candidate feed prices use incompatible currencies.')
+    feeds = sorted((build_feed(item, library) for item in selected if item.get('available', True)),
+                   key=lambda feed: feed.rufas_id)
+    if len(feeds) < 2 or len({feed.rufas_id for feed in feeds}) != len(feeds):
+        raise ValueError('Select at least two distinct available feeds.')
+
+    candidate_seed = None
+    if candidate_ndf_mode:
+        midpoint_amounts = [(feed.lower_limit + feed.limit) / 2 for feed in feeds]
+        if sum(midpoint_amounts) <= 0:
+            return {'ok': False, 'status': 'incomplete_input', 'message': 'Available feed bounds do not allow a positive candidate ration.'}
+        midpoint_feeds = [FeedInRation(amount=amount, info=feed) for amount, feed in zip(midpoint_amounts, feeds)]
+        initial_ndf = CandidateRationOptimizer._candidate_ndf(midpoint_feeds)
+        if not math.isfinite(initial_ndf):
+            raise ValueError('RuFaS feed composition cannot determine candidate-ration NDF.')
+        initial_animal = calculate(_payload_with_ndf(payload, initial_ndf), include_native=True)
+        if initial_animal['status'] != 'success':
+            return {'ok': False, 'status': initial_animal['status'],
+                    'missing_inputs': initial_animal.get('missing_inputs', []),
+                    'message': initial_animal.get('message', 'Complete the animal profile.')}
+        initial_requirements = initial_animal['_native_requirements']
+        candidate_seed = _allocate_candidate_seed(feeds, initial_requirements.dry_matter)
+        seed_feeds = [FeedInRation(amount=amount, info=feed) for amount, feed in zip(candidate_seed, feeds)]
+        seed_ndf = CandidateRationOptimizer._candidate_ndf(seed_feeds)
+        if not math.isfinite(seed_ndf):
+            raise ValueError('RuFaS feed composition cannot determine candidate-ration NDF.')
+        payload = _payload_with_ndf(payload, seed_ndf)
+
+    animal = calculate(payload, include_native=True)
+    if animal['status'] != 'success':
+        return {'ok': False, 'status': animal['status'], 'missing_inputs': animal.get('missing_inputs', []),
+                'message': animal.get('message', 'Complete the animal profile.')}
+    requirements = animal.pop('_native_requirements')
+    if candidate_ndf_mode and not math.isclose(
+            requirements.dry_matter, initial_requirements.dry_matter, rel_tol=0, abs_tol=1e-8):
+        return {'ok': False, 'status': 'calculation_error',
+                'message': 'Candidate NDF changed the lactating-cow DMI requirement; candidate formulation is not validated.'}
+
+    if has_previous_ration:
+        emissions = calculate_previous_ration_emissions(payload['previous_ration'], library, animal, build_feed)
+        source = payload.get('previous_ration_source')
+        if isinstance(source, str) and source.strip():
+            emissions['source_reference'] = source.strip()
+        methane = emissions['enteric_methane_g_day']
+        urine_nitrogen = emissions['urine_nitrogen_kg_day']
+        optimizer = RationOptimizer()
+    elif candidate_ndf_mode:
+        emissions = explicit_emissions
+        methane = explicit_emissions['enteric_methane_g_day'] if explicit_emissions else None
+        urine_nitrogen = explicit_emissions['urine_nitrogen_kg_day'] if explicit_emissions else None
+        optimizer = CandidateRationOptimizer(
+            animal_payload=payload,
+            calculate_candidate_emissions=explicit_emissions is None,
+            seed=candidate_seed,
+        )
+    else:
+        emissions = explicit_emissions
+        methane = emissions['enteric_methane_g_day']
+        urine_nitrogen = emissions['urine_nitrogen_kg_day']
+        optimizer = RationOptimizer()
+
+    solution, configuration = optimizer.attempt_optimization(
+        nutrient_standard=NutrientStandard.NASEM,
+        pen_average_body_weight=animal['body_weight_kg'],
+        pen_average_enteric_methane=methane, pen_average_urine_nitrogen=urine_nitrogen,
+        requirements=requirements,
+        initial_dry_matter_requirement=requirements.dry_matter,
+        initial_protein_requirement=requirements.metabolizable_protein,
+        pen_available_feeds=feeds, animal_combination=group,
+    )
+    if not solution.success:
+        return {'ok': False, 'status': 'solver_failure', 'solver_status': int(solution.status),
+                'message': 'Native RuFaS could not find a feasible ration.'}
+    constraints = []
+    candidate_constraint_names = {
+        '_candidate_net_energy_constraint': 'NASEM_net_energy_constraint',
+        '_candidate_protein_lower': 'protein_constraint_lower',
+        '_candidate_protein_upper': 'protein_constraint_upper',
+    }
+    for constraint in optimizer._select_constraints(group):
+        constraint_function = constraint['fun']
+        slack = float(constraint_function(solution.x, configuration))
+        name = candidate_constraint_names.get(constraint_function.__name__, constraint_function.__name__)
+        constraints.append({'name': name, 'slack': slack,
+                            'tolerance': 1e-4, 'status': 'satisfied' if math.isfinite(slack) and slack >= -1e-4 else 'violated',
+                            'satisfied': math.isfinite(slack) and slack >= -1e-4})
+    ordered = sorted(feeds, key=lambda feed: feed.rufas_id)
+    quantities = [float(value) for value in solution.x]
+    if any(not math.isfinite(value) or value < -1e-6 for value in quantities) or not all(c['satisfied'] for c in constraints):
+        return {'ok': False, 'status': 'constraint_violation', 'message': 'Native result failed independent constraint checks.', 'constraints': constraints}
+    if any(quantity < feed.lower_limit - 1e-4 or quantity > feed.limit + 1e-4
+           for quantity, feed in zip(quantities, ordered)):
+        return {'ok': False, 'status': 'feed_bound_violation',
+                'message': 'Native result violates feed inclusion bounds.'}
+    cost = sum(quantity * feed.purchase_cost for quantity, feed in zip(quantities, ordered))
+    if not math.isfinite(cost) or not math.isclose(cost, float(solution.fun), rel_tol=1e-5, abs_tol=1e-4):
+        return {'ok': False, 'status': 'cost_mismatch',
+                'message': 'Native solver cost does not match the feed quantities.'}
+
+    # Recompute the candidate profile at the exact optimized NDF before reporting requirements.
+    ration_feeds = [FeedInRation(amount=quantity, info=feed) for quantity, feed in zip(quantities, ordered)]
+    ration_context = None
+    if candidate_ndf_mode:
+        final_ndf = CandidateRationOptimizer._candidate_ndf(ration_feeds)
+        if not math.isfinite(final_ndf):
+            return {'ok': False, 'status': 'calculation_error', 'message': 'Optimized ration NDF is not finite.'}
+        final_animal = calculate(_payload_with_ndf(payload, final_ndf), include_native=True)
+        if final_animal['status'] != 'success':
+            return {'ok': False, 'status': final_animal['status'],
+                    'missing_inputs': final_animal.get('missing_inputs', []),
+                    'message': final_animal.get('message', 'Could not calculate final candidate requirements.')}
+        final_requirements = final_animal['_native_requirements']
+        if (not math.isclose(final_requirements.dry_matter, requirements.dry_matter, rel_tol=0, abs_tol=1e-8)
+                or not math.isclose(final_requirements.total_energy_requirement,
+                                    requirements.total_energy_requirement, rel_tol=0, abs_tol=1e-8)):
+            return {'ok': False, 'status': 'calculation_error',
+                    'message': 'Candidate NDF changes DMI or energy requirements; candidate formulation is not validated.'}
+        animal = final_animal
+        requirements = final_requirements
+        ration_context = {'ndf_percentage': final_ndf,
+                          'dry_matter_intake_kg_day': sum(quantities),
+                          'source': 'RuFaS optimized feed composition'}
+        if emissions is None:
+            emissions = calculate_candidate_ration_emissions(ration_feeds, animal)
+        else:
+            emissions = {**emissions,
+                         'candidate_ration': [{'rufas_id': feed.info.rufas_id, 'kg_dm_day': feed.amount}
+                                              for feed in ration_feeds],
+                         'candidate_ration_dmi_kg_day': sum(quantities)}
+    else:
+        animal.pop('_native_requirements', None)
+
+    ingredients = [{'id': feed.rufas_id, 'name': feed.Name, 'kg_dm': quantity,
+                    'kg_as_fed': quantity / (feed.DM / 100),
+                    'price_as_fed': feed.purchase_cost * feed.DM / 100,
+                    'cost_day': quantity * feed.purchase_cost,
+                    'percent_dm': 100 * quantity / sum(quantities),
+                    'percent_cost': 100 * quantity * feed.purchase_cost / cost if cost > 0 else None,
+                    'price_record': selected_prices[feed.rufas_id]}
+                   for quantity, feed in zip(quantities, ordered)]
+    # These are direct sums of native feed composition, not inferred NASEM energy or MP supply.
+    nutrient_supply = {'dry_matter': {'value': sum(quantities), 'unit': 'kg/day', 'source': 'RuFaS optimized quantities'}}
+    for label, field_name in (('ndf', 'NDF'), ('crude_protein', 'CP'), ('starch', 'starch'),
+                              ('fat', 'EE'), ('calcium', 'calcium'), ('phosphorus', 'phosphorus')):
+        value = NutritionSupplyCalculator._calculate_nutritive_content(ration_feeds, field_name)
+        if math.isfinite(value):
+            nutrient_supply[label] = {'value': value, 'unit': 'kg/day', 'source': 'RuFaS NASEM feed composition'}
+    baseline = {'status': 'not_available', 'source': payload.get('previous_ration_source'), 'missing_price_ids': [], 'price_records': []}
+    if payload.get('previous_ration') is not None:
+        baseline['status'] = 'complete'
+        baseline_cost = 0.0
+        for item in payload['previous_ration']:
+            identifier = int(item['rufas_id'])
+            price_record = resolve_price(item, library) if item.get('price_record') is not None or item.get('price_as_fed') not in (None, '') else selected_prices.get(identifier)
+            if price_record is None:
+                baseline['missing_price_ids'].append(identifier)
+                continue
+            baseline['price_records'].append(price_record)
+            price = price_record['price_as_fed']
+            dm_fraction = float(library[identifier]['DM']) / 100
+            baseline_cost += float(item['kg_dm_day']) / dm_fraction * price
+        if baseline['missing_price_ids']:
+            baseline['status'] = 'missing_prices'
+        else:
+            basis = comparison_status(baseline['price_records'] + list(selected_prices.values()))
+            baseline['comparability'] = basis
+            baseline.update({'cost_day': baseline_cost, 'cost_month': baseline_cost * 30})
+            if basis == 'comparable':
+                savings = baseline_cost - cost
+                baseline.update({'daily_savings': savings, 'monthly_savings': savings * 30,
+                                 'percentage_savings': savings / baseline_cost * 100 if baseline_cost > 0 else None})
+    result = {'ok': True, 'status': 'success', 'engine': 'RuFaS RationOptimizer',
+              'nutritional_standard': 'NASEM_2021', 'cost_day': cost, 'cost_month': cost * 30,
+              'currency': next(iter(candidate_currencies)),
+              'dmi': sum(quantities), 'ingredients': ingredients,
+              'requirements': animal['requirements'], 'constraints': constraints,
+              'requirement_units': {name: item['unit'] for name, item in animal['constraints'].items()},
+              'nutrient_supply': nutrient_supply, 'baseline_comparison': baseline,
+              'profile': {'animal_category': animal['animal_category'],
+                          'source': animal['profile_source'],
+                          'assumption_type': animal['assumption_type']},
+              'solver_status': int(solution.status), 'emissions': emissions,
+              'price_unit': 'currency/kg as-fed input; currency/kg dry matter optimizer'}
+    if ration_context is not None:
+        result['ration_context'] = ration_context
+    return result

@@ -70,3 +70,6 @@ DataCollectionApp/schema/*
 !DataCollectionApp/schema/.keep
 
 docs/_build/
+
+# Ferramentas e Python gerenciados pelo iniciador Linux
+.local-tools/

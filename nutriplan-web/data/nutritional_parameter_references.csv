@@ -1,0 +1,14 @@
+parameter,candidate_value,unit,conditions,animal_category,subcategory,parity,breed,production_system,source,source_location,validation_status,auto_fill
+mature_body_weight,740.1,kg,Example herd mean; not an individual cow value,lactating_cow,,,Holstein,freestall,RuFaS example freestall animal,animal.farm_level.mature_body_weight_avg,documented_example_not_approved_for_individual,false
+body_condition_score_5,,score_1_to_5,,,,,,,No applicable individual reference located,,no_applicable_reference,false
+days_in_milk,,day,,,,,,,No applicable individual reference located,,no_applicable_reference,false
+day_of_pregnancy,,day,,,,,,,No applicable individual reference located,,no_applicable_reference,false
+calving_interval,400,day,Example herd assumption; not an individual cow value,lactating_cow,,,Holstein,freestall,RuFaS example freestall animal,animal.farm_level.calving_interval,documented_example_not_approved_for_individual,false
+milk_fat,4,percent_milk,Example management assumption; not an individual cow value,lactating_cow,,,Holstein,freestall,RuFaS example freestall animal,animal.management.milk_fat,documented_example_not_approved_for_individual,false
+milk_true_protein,3.2,percent_milk,Example management assumption; not an individual cow value,lactating_cow,,,Holstein,freestall,RuFaS example freestall animal,animal.management.milk_protein,documented_example_not_approved_for_individual,false
+milk_lactose,,percent_milk,,,,,,,No applicable individual reference located,,no_applicable_reference,false
+milk_production,,kg_per_day,,,,,,,No applicable individual reference located,,no_applicable_reference,false
+housing,Barn,category,Example farm housing; not a user-specific value,lactating_cow,,,Holstein,freestall,RuFaS example freestall animal,animal.farm_level.housing_type,documented_example_not_approved_for_individual,false
+distance,,meter,,,,,,,No applicable individual reference located,,no_applicable_reference,false
+ndf_percentage,,percent_dry_matter,Depends on current or explicitly reported ration,,,,,,No universal or user-specific reference located,,ration_specific_no_default,false
+process_based_phosphorus_requirement,,g_per_day,Requires stateful RuFaS process module inputs,,,,,,No standalone validated individual reference located,,not_derivable_from_current_form,false

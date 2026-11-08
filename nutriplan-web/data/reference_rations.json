@@ -1,0 +1,33 @@
+[
+  {
+    "id": "guelph_lactating_cow_test",
+    "label": "Cenário demonstrativo Guelph — primeira lactação",
+    "animal_category": "first_lactation_cow",
+    "body_weight_kg": 624.795,
+    "parameters": {
+      "mature_body_weight": 700,
+      "body_condition_score_5": 3,
+      "days_in_milk": 100,
+      "day_of_pregnancy": 46,
+      "milk_fat": 4.55,
+      "milk_true_protein": 3.66,
+      "milk_lactose": 4.85,
+      "milk_production": 25.062,
+      "housing": "Barn",
+      "distance": 0,
+      "process_based_phosphorus_requirement": 0.45
+    },
+    "previous_ration": [
+      {"rufas_id": 1, "kg_dm_day": 8.2101564407},
+      {"rufas_id": 31, "kg_dm_day": 6.7323288918},
+      {"rufas_id": 51, "kg_dm_day": 5.4734377861},
+      {"rufas_id": 46, "kg_dm_day": 4.1050782204}
+    ],
+    "previous_ration_source": "nasem_dairy 1.0.2 lactating_cow_test demo; commit 9b0b28ef9a6013ac278bde72e58e01395c2ac6dc",
+    "unit": "kg_dm_day",
+    "standard": "NASEM_2021",
+    "assumption": "Research demonstration scenario; not an individual animal's observed feeding history",
+    "source_url": "https://github.com/CNM-University-of-Guelph/NASEM-Model-Python/blob/9b0b28ef9a6013ac278bde72e58e01395c2ac6dc/src/nasem_dairy/data/demo/lactating_cow_test.json",
+    "profile_source": "RuFaS input/data/animal/example_freestall_animal.json; process phosphorus from RuFaS calculator test"
+  }
+]

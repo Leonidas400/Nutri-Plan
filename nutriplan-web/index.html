@@ -4,34 +4,247 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f7f7f2">
-<title>NutriPlan | Otimização de dietas</title>
+<script>
+(()=>{const allowed=['pt-BR','en-US'],themeKey='nutriplan.theme.v1',languageKey='nutriplan.language.v1';let theme='system',language=null;try{theme=localStorage.getItem(themeKey)||'system';language=localStorage.getItem(languageKey);}catch(_){}if(!['light','dark','system'].includes(theme))theme='system';if(!allowed.includes(language)){const languages=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||''];const found=languages.map(value=>String(value).toLowerCase()).find(value=>value.startsWith('en')||value.startsWith('pt'));language=found?(found.startsWith('en')?'en-US':'pt-BR'):'pt-BR';}document.documentElement.dataset.theme=theme;document.documentElement.lang=language;const isDark=theme==='dark'||(theme==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=isDark?'#111814':'#f7f7f2';})();
+</script>
 <link rel="stylesheet" href="styles.css">
+<script>
+/* Display-only Portuguese labels for the RuFaS/NASEM feed library. Source names and API values remain unchanged. */
+const FEED_NAME_PT_BR = Object.freeze({
+  'Alfalfa meal':'Farelo de alfafa',
+  'Almond hulls':'Cascas de amêndoa',
+  'Apple pomace or byproduct, wet':'Bagaço de maçã ou subproduto, úmido',
+  'Bakery byproduct':'Subproduto de panificação',
+  'Bakery byproduct, bread waste':'Subproduto de panificação, resíduo de pão',
+  'Bakery byproduct, cereal':'Subproduto de panificação, cereal',
+  'Bakery byproduct, cookies':'Subproduto de panificação, biscoitos',
+  'Barley grain, dry, ground':'Grão de cevada seco e moído',
+  'Barley malt sprouts':'Brotos de malte de cevada',
+  'Barley silage, headed':'Silagem de cevada em espigamento',
+  'Beet pulp, dry':'Polpa de beterraba seca',
+  'Bermudagrass hay':'Feno de capim-bermuda',
+  'Blood meal, high dRUP':'Farinha de sangue, dRUP alta',
+  'Blood meal, low dRUP':'Farinha de sangue, dRUP baixa',
+  'Brewers grains, dry':'Bagaço de cervejaria seco',
+  'Brewers grains, wet':'Bagaço de cervejaria úmido',
+  'Canola seed, ground':'Semente de canola moída',
+  'Canola meal':'Farelo de canola',
+  'Chocolate byproduct':'Subproduto de chocolate',
+  'Citrus pulp, dry':'Polpa cítrica seca',
+  'Citrus pulp, wet':'Polpa cítrica úmida',
+  'Corn cobs':'Sabugos de milho',
+  'Corn gluten feed, dry':'Farelo de glúten de milho seco',
+  'Corn and cob meal, dry':'Fubá de milho e sabugo seco',
+  'Corn gluten meal':'Farinha de glúten de milho',
+  'Corn grain dry, coarse grind':'Grão de milho seco, moagem grossa',
+  'Corn grain dry, medium grind':'Grão de milho seco, moagem média',
+  'Corn grain HM, coarse grind':'Grão de milho de alta umidade, moagem grossa',
+  'Corn grain, steam-flaked':'Grão de milho laminado a vapor',
+  'Corn hominy feed':'Subproduto de milho tipo hominy',
+  'Corn silage, immature':'Silagem de milho imatura',
+  'Corn silage, typical':'Silagem de milho típica',
+  'Corn silage, mature':'Silagem de milho madura',
+  'Cottonseed, whole':'Caroço de algodão integral',
+  'Cottonseed hulls':'Cascas de caroço de algodão',
+  'Cottonseed meal':'Farelo de caroço de algodão',
+  'Distillers solubles':'Solúveis de destilaria',
+  'Calcium soaps':'Sais cálcicos de ácidos graxos',
+  'Fat, tallow':'Gordura, sebo',
+  'Feather meal':'Farinha de penas',
+  'Fish meal':'Farinha de peixe',
+  'Cool season grass hay, mature':'Feno maduro de gramínea de estação fria',
+  'Cool season grass hay, mid-mtr':'Feno de gramínea de estação fria, maturidade intermediária',
+  'Cool season grass silage':'Silagem de gramínea de estação fria',
+  'Pasture, grass':'Pastagem de gramínea',
+  'Grass lg mixt, grass hay, mid':'Mistura gramínea-leguminosa, feno de gramínea, maturidade intermediária',
+  'Grass lg mixt, grass hay, mtr':'Mistura gramínea-leguminosa, feno de gramínea maduro',
+  'Grass legume mixt, grass slg':'Mistura gramínea-leguminosa, silagem de gramínea',
+  'Grass lg mixt, mix hay':'Mistura gramínea-leguminosa, feno misto',
+  'Grass lg mixt, mix silage':'Mistura gramínea-leguminosa, silagem mista',
+  'Grass lg mixt, leg. hay, mtr':'Mistura gramínea-leguminosa, feno de leguminosa maduro',
+  'Grass lg mixt, leg., hay, immtr':'Mistura gramínea-leguminosa, feno de leguminosa imaturo',
+  'Grass lg mixt, legume slg':'Mistura gramínea-leguminosa, silagem de leguminosa',
+  'Pasture, legume':'Pastagem de leguminosa',
+  'Legume hay, immature':'Feno de leguminosa imaturo',
+  'Legume hay, mid-maturity':'Feno de leguminosa em maturidade intermediária',
+  'Legume hay, mature':'Feno de leguminosa maduro',
+  'Legume silage, immature':'Silagem de leguminosa imatura',
+  'Legume silage, mid-maturity':'Silagem de leguminosa em maturidade intermediária',
+  'Flaxseed meal':'Farelo de linhaça',
+  'Meat and bone meal, porcine':'Farinha de carne e ossos suína',
+  'Molasses':'Melaço',
+  'Oat grain':'Grão de aveia',
+  'Oat hay mid-maturity':'Feno de aveia em maturidade intermediária',
+  'Peanut meal, expellers':'Farelo de amendoim prensado',
+  'Potato byproduct':'Subproduto de batata',
+  'Poultry byproduct meal':'Farinha de subprodutos de aves',
+  'Rice bran':'Farelo de arroz',
+  'Rye annual silage, mature':'Silagem madura de centeio anual',
+  'Safflower meal':'Farelo de cártamo',
+  'Sorghum grain, dry, ground':'Grão de sorgo seco e moído',
+  'Sorghum grain, steam flaked':'Grão de sorgo laminado a vapor',
+  'Sorghum forage silage, mature':'Silagem madura de forragem de sorgo',
+  'Sorghum-sudangrass silage':'Silagem de sorgo-sudão',
+  'Sorghum-sudangrass hay':'Feno de sorgo-sudão',
+  'Soybean hulls':'Cascas de soja',
+  'Soybean meal, expellers':'Farelo de soja prensado',
+  'Soybean meal, solvent 48CP':'Farelo de soja extraído por solvente, 48% PB',
+  'Soybeans, whole raw':'Soja integral crua',
+  'Soybeans, whole roasted':'Soja integral tostada',
+  'Sudangrass silage, mature':'Silagem madura de capim-sudão',
+  'Sunflower meal':'Farelo de girassol',
+  'Sunflower seed':'Semente de girassol',
+  'Tomato pomace':'Bagaço de tomate',
+  'Triticale silage, mature':'Silagem madura de triticale',
+  'Wheat bran':'Farelo de trigo',
+  'Wheat grain':'Grão de trigo',
+  'Wheat hay, headed':'Feno de trigo em espigamento',
+  'Wheat middlings':'Farelinho de trigo',
+  'Wheat silage, HEADED':'Silagem de trigo em espigamento',
+  'Wheat straw':'Palha de trigo',
+  'Skim milk, powder':'Leite desnatado em pó',
+  'Whole milk':'Leite integral',
+  'Milk replacer 28 CP 17.5 fat':'Sucedâneo lácteo, 28% PB e 17,5% gordura',
+  'Whey, delactosed':'Soro de leite delactosado',
+  'Whey, dry':'Soro de leite seco',
+  'Whey, wet':'Soro de leite úmido',
+  'Calf starter 18CP high starch (Fed to calves only)':'Ração inicial para bezerros, 18% PB e alto amido (somente para bezerros)',
+  'Bone meal':'Farinha de ossos',
+  'Calcium carbonate':'Carbonato de cálcio',
+  'Calcium phosphate (di)':'Fosfato dicálcico',
+  'Calcium phosphate (mono)':'Fosfato monocálcico',
+  'Calcium sulfate (2H2O)':'Sulfato de cálcio (2H2O)',
+  'Limestone':'Calcário',
+  'Dolomite limestone (magnesium)':'Calcário dolomítico (magnésio)',
+  'Magnesium oxide':'Óxido de magnésio',
+  'Potassium chloride':'Cloreto de potássio',
+  'Sodium chloride (salt)':'Cloreto de sódio (sal)',
+  'Sodium bicarbonate':'Bicarbonato de sódio',
+  'Phosphate, monosodium (H2O)':'Fosfato monossódico (H2O)',
+  'Sodium sulfate':'Sulfato de sódio',
+  'Potassium sulfate':'Sulfato de potássio',
+  'Ammonium sulfate':'Sulfato de amônio',
+  'Ammonium phosphate (dibasic)':'Fosfato diamônico',
+  'Ammonium chloride':'Cloreto de amônio',
+  'Calcium chloride (2H2O)':'Cloreto de cálcio (2H2O)',
+  'Calcium chloride':'Cloreto de cálcio',
+  'Calcium hydroxide':'Hidróxido de cálcio',
+  'Calcium oxide':'Óxido de cálcio',
+  'Magnesium chloride (6H2O)':'Cloreto de magnésio (6H2O)',
+  'Oystershell':'Concha de ostra',
+  'Magnesium carbonate':'Carbonato de magnésio',
+  'Magnesium hydroxide':'Hidróxido de magnésio',
+  'Magnesium sulfate (7H2O)':'Sulfato de magnésio (7H2O)',
+  'Ammonium phosphate (monobasic)':'Fosfato monoamônico',
+  'Phosphate, Curacao':'Fosfato de Curaçao',
+  'Phosphate, defluorinated':'Fosfato desfluorizado',
+  'Phosphoric acid':'Ácido fosfórico',
+  'Sodium tripolyphosphate':'Tripolifosfato de sódio',
+  'Potassium bicarbonate':'Bicarbonato de potássio',
+  'Potassium carbonate':'Carbonato de potássio',
+  'Potassium iodide':'Iodeto de potássio',
+  'Sodium carbonate (H2O)':'Carbonato de sódio (H2O)',
+  'Sodium sesquicarbonate (2H2O)':'Sesquicarbonato de sódio (2H2O)',
+  'Cobalt carbonate':'Carbonato de cobalto',
+  'Cobalt carbonate (6H2O)':'Carbonato de cobalto (6H2O)',
+  'Cobalt chloride (6H2O)':'Cloreto de cobalto (6H2O)',
+  'Cobalt sulfate (7H2O)':'Sulfato de cobalto (7H2O)',
+  'Cobalt organic generic':'Cobalto orgânico genérico',
+  'Copper chloride (2H2O)':'Cloreto de cobre (2H2O)',
+  'Copper sulfate (5H2O)':'Sulfato de cobre (5H2O)',
+  'Copper oxide':'Óxido de cobre',
+  'Copper organic, generic':'Cobre orgânico, genérico',
+  'EDDI':'EDDI',
+  'Calcium iodate':'Iodato de cálcio',
+  'Ferrous sulfate (7H2O)':'Sulfato ferroso (7H2O)',
+  'Ferrous sulfate (H2O)':'Sulfato ferroso (H2O)',
+  'Ferrous carbonate':'Carbonato ferroso',
+  'Iron oxide':'Óxido de ferro',
+  'Iron, organic generic':'Ferro orgânico genérico',
+  'Manganese chloride':'Cloreto de manganês',
+  'Manganese chloride (4H2O)':'Cloreto de manganês (4H2O)',
+  'Manganese carbonate':'Carbonato de manganês',
+  'Manganese sulfate (H2O)':'Sulfato de manganês (H2O)',
+  'Manganese sulfate (5H2O)':'Sulfato de manganês (5H2O)',
+  'Manganese oxide':'Óxido de manganês',
+  'Manganese organic generic':'Manganês orgânico genérico',
+  'Selenite, sodium':'Selenito de sódio',
+  'Selenate, sodium (10 H2O)':'Selenato de sódio (10 H2O)',
+  'Selenium yeast, generic':'Levedura de selênio, genérica',
+  'Zinc carbonate':'Carbonato de zinco',
+  'Zinc chloride':'Cloreto de zinco',
+  'Zinc oxide':'Óxido de zinco',
+  'Zinc sulfate (H2O)':'Sulfato de zinco (H2O)',
+  'Zinc, organic generic':'Zinco orgânico genérico',
+  'Vit A premix':'Premix de vitamina A',
+  'Vit D premix':'Premix de vitamina D',
+  'Vit E premix':'Premix de vitamina E',
+  'VitTM Premix, generic':'Premix VitTM genérico',
+  'Farm ES Mineral Mix':'Mistura mineral Farm ES',
+  'Farm ES Midwest BP Blend':'Mistura de subprodutos Farm ES — Meio-Oeste',
+  'Farm ES Northeast BP Blend':'Mistura de subprodutos Farm ES — Nordeste',
+  'Farm ES South BP Blend':'Mistura de subprodutos Farm ES — Sul',
+  'Farm ES West BP Blend':'Mistura de subprodutos Farm ES — Oeste',
+  'Aminoplus':'Aminoplus'
+});
+const FEED_CATEGORY_PT_BR = Object.freeze({
+  'Plant Protein':'Proteína vegetal',
+  'By-Product/Other':'Coprodutos/Outros',
+  'Energy Source':'Fonte de energia',
+  'Grain Crop Forage':'Forragem de cereal',
+  'Grass/Legume Forage':'Forragem de gramíneas/leguminosas',
+  'Pasture':'Pastagem',
+  'Calf Liquid Feed':'Alimento líquido para bezerros',
+  'Vitamin/Mineral':'Vitamina/Mineral',
+  'NPN Supplement':'Suplemento de NNP'
+});
+const FEED_METADATA_PT_BR = Object.freeze({
+  'demonstration':'demonstração',
+  'historical':'histórico',
+  'manual':'manual',
+  'unclassified':'sem classificação',
+  'source not documented':'fonte não documentada',
+  'no date':'sem data',
+  'no documented price':'sem preço documentado'
+});
+function translateFeedName(name) {
+  if (activeLocale !== 'pt-BR') return name;
+  return FEED_NAME_PT_BR[name] || name;
+}
+
+</script>
 </head>
 <body>
+<a class="skip-link" href="#setup">Ir para configuração</a>
 <div class="app">
 <aside class="sidebar" aria-label="Menu do aplicativo">
-  <div class="brand"><div><strong class="brand-name">NutriPlan</strong><span class="brand-subtitle">Pesquisa Operacional</span></div></div>
-  <div class="sidebar-group"><p class="sidebar-label">Navegação</p>
-    <nav class="tabs" aria-label="Navegação principal">
-      <button class="tab active" data-view="setup" aria-current="page"><span class="nav-index" aria-hidden="true">1</span>Configuração</button>
-      <button class="tab" data-view="results"><span class="nav-index" aria-hidden="true">2</span>Resultados</button>
-      <button class="tab" data-view="native"><span class="nav-index" aria-hidden="true">3</span>Motor RuFaS</button>
-      <button class="tab" data-view="method"><span class="nav-index" aria-hidden="true">4</span>Metodologia</button>
-    </nav>
+  <div class="brand"><div><strong class="brand-name" translate="no">NutriPlan</strong></div></div>
+  <div class="header-controls" aria-label="Preferências">
+    <label class="preference-control" for="languagePreference"><span>Idioma</span><select id="languagePreference" class="preference-select" aria-label="Idioma"><option value="pt-BR">Português (Brasil)</option><option value="en-US">English (US)</option></select></label>
+    <label class="preference-control" for="themePreference"><span>Aparência</span><select id="themePreference" class="preference-select" aria-label="Aparência"><option value="light">Claro</option><option value="dark">Escuro</option><option value="system">Automático</option></select></label>
   </div>
-  <div class="sidebar-bottom"><span class="environment-label">Ambiente local</span><span class="environment-value">Dados ilustrativos</span></div>
 </aside>
 <div class="workspace">
-  <header class="topbar"><span class="breadcrumb">Ferramenta acadêmica / Otimização alimentar</span><span class="local-status">Processamento local</span></header>
   <main class="shell">
-    <div class="heading-row"><div><p class="document-overline">ESTUDO DE CASO <span class="overline-divider">/</span> FORMULAÇÃO ALIMENTAR</p><h1>Otimização de dietas</h1><p>Encontre a combinação de ingredientes de menor custo para as exigências nutricionais que você definiu.</p></div><span class="model-indicator"><span class="model-dot" aria-hidden="true"></span> Modo de estudo: SciPy</span></div>
-    <section id="setup" class="view" aria-label="Configuração do experimento">
+    <div class="heading-row"><div><p class="document-overline">FORMULAÇÃO ALIMENTAR</p><h1>Otimização de dietas</h1><p>Configure a vaca em lactação, escolha os ingredientes e calcule a dieta pelas exigências NASEM 2021.</p></div></div>
+    <section id="setup" class="view" aria-label="Configuração da dieta">
       <div class="setup-grid">
         <section class="card animal-card" aria-labelledby="animalTitle">
-          <div class="section-heading"><div><p class="stage-heading">01 <span aria-hidden="true">/</span> PERFIL DO ANIMAL</p><h2 id="animalTitle">Características do bovino</h2><p>Informe o perfil e as exigências usadas na formulação.</p></div></div>
-          <div class="fields">
-            <div class="field full"><label for="category">Categoria animal</label><select class="input" id="category"><option value="Vaca leiteira em lactação">Vaca leiteira em lactação</option><option value="Novilha em crescimento">Novilha em crescimento (modelo simplificado)</option></select></div>
-            <div class="field"><label for="weight">Peso corporal (kg)</label><input class="input" id="weight" type="number" min="1" value="600"></div>
+          <div class="section-heading"><div><p class="stage-heading">01 <span aria-hidden="true">/</span> PERFIL DO ANIMAL</p><h2 id="animalTitle">Vaca em lactação</h2><p>Informe a fase, a paridade e os dados fisiológicos desta vaca.</p></div></div>
+          <div class="fields animal-primary-fields" id="animalPrimaryFields">
+            <div class="field"><label for="lactationPhase">Subcategoria da lactação</label><select class="input" id="lactationPhase" name="lactation_subcategory" required><option value="" selected>Escolha uma fase</option><option value="fresh">Recém-parida</option><option value="early">Início da lactação</option><option value="mid">Meio da lactação</option><option value="late">Final da lactação</option></select></div>
+            <div class="field"><label for="category">Paridade / número de lactações</label><select class="input" id="category" name="parity"><option value="first_lactation_cow" selected>Primeira lactação (1)</option><option value="multiparous_lactating_cow">Multípara (2+)</option></select></div>
+            <div class="field"><label for="weight">Peso corporal (kg)</label><input class="input" id="weight" name="body_weight_kg" type="number" min="1" step="any" required></div>
+            <div class="field"><label for="profile-days_in_milk">Dias em lactação</label><input class="input" id="profile-days_in_milk" data-profile="days_in_milk" name="days_in_milk" type="number" min="0" step="1" required></div>
+            <div class="field"><label for="profile-milk_production">Produção diária de leite (kg)</label><input class="input" id="profile-milk_production" data-profile="milk_production" name="milk_production" type="number" min="0" step="any" required></div>
+            <div class="field"><label for="profile-milk_fat">Gordura do leite (%)</label><input class="input" id="profile-milk_fat" data-profile="milk_fat" name="milk_fat" type="number" min="0" max="100" step="any" required></div>
+            <div class="field"><label for="profile-milk_true_protein">Proteína verdadeira do leite (%)</label><input class="input" id="profile-milk_true_protein" data-profile="milk_true_protein" name="milk_true_protein" type="number" min="0" max="100" step="any" required></div>
+            <div class="field full"><label class="check" for="pregnant"><input id="pregnant" type="checkbox" aria-controls="pregnancyDayField" aria-expanded="false"> Gestante</label></div>
+            <div class="field hidden" id="pregnancyDayField" hidden><label for="profile-day_of_pregnancy">Dia de gestação</label><input class="input" id="profile-day_of_pregnancy" data-profile="day_of_pregnancy" name="day_of_pregnancy" type="number" min="0" step="1"></div>
+          </div><p id="profileSummary" class="profile-summary" aria-live="polite"></p>
+          <section class="requirements-panel" aria-live="polite"><h3>Exigências nutricionais · NASEM 2021</h3><p id="requirementsStatus">Preencha os dados fisiológicos para calcular as exigências.</p><div id="requirementsTable" class="hidden"></div><details id="advancedProfile"><summary>Parâmetros complementares</summary><div id="advancedFields" class="fields"></div></details></section>
+          
+          <details class="legacy-limits"><summary>Parâmetros do modelo linear HiGHS</summary><p>Estes limites continuam independentes do cálculo NASEM até a integração científica dos modelos.</p><div class="fields">
             <div class="field"><label for="milk">Produção de leite (kg/dia)</label><input class="input" id="milk" type="number" min="0" value="25"></div>
             <div class="field"><label for="dmi">Ingestão de MS (kg/dia)</label><input class="input" id="dmi" type="number" min="1" step="0.1" value="20"></div>
             <div class="field"><label for="energy_min">Energia mínima (Mcal/dia)</label><input class="input" id="energy_min" type="number" min="0" step="0.1" value="30"></div>
@@ -39,117 +252,569 @@
             <div class="field"><label for="ndf_min">FDN mínima (% MS)</label><input class="input" id="ndf_min" type="number" min="0" max="100" step="0.1" value="28"></div>
             <div class="field"><label for="ndf_max">FDN máxima (% MS)</label><input class="input" id="ndf_max" type="number" min="0" max="100" step="0.1" value="45"></div>
             <div class="field"><label for="forage_min">Volumosos mínimos (% MS)</label><input class="input" id="forage_min" type="number" min="0" max="100" step="0.1" value="35"></div>
-          </div>
+          </div></details>
         </section>
         <aside class="guide" aria-label="Orientação para preenchimento">
           <div><h2>Como preparar os dados</h2><p>Para comparar dietas, mantenha consistentes as unidades, os preços e as referências nutricionais.</p>
             <div class="guide-points"><div class="guide-point"><strong>Preço</strong><span>Use R$/kg de matéria natural, com data e fonte da cotação.</span></div><div class="guide-point"><strong>Composição</strong><span>Registre PB, FDN e energia com referência nutricional.</span></div><div class="guide-point"><strong>Restrições</strong><span>Confira os limites de inclusão e a dieta-base de cada alimento.</span></div></div>
           </div>
-          <div class="guide-foot"><span class="guide-kicker">De onde vêm os dados?</span><p><strong>CEPEA</strong> para preços de mercado; tabelas científicas para nutrientes e exigências.</p><a href="https://www.cepea.org.br/br/indicador/" target="_blank" rel="noopener noreferrer">Consultar indicadores CEPEA</a></div>
         </aside>
       </div>
+      <details class="advanced-options" id="advancedOptions"><summary>Configurações avançadas, cenários e análises</summary><div class="advanced-options-content"><section id="previousRationSection" class="previous-ration-card hidden" aria-labelledby="previousRationTitle">
+        <h3 id="previousRationTitle">Dieta atual do lote (opcional)</h3><p>Se você tiver uma dieta atual, informe os alimentos e as quantidades em kg MS/dia.</p>
+        <div id="previousRationRows"></div>
+        <button class="btn" id="addPreviousFeed" type="button">Adicionar alimento</button>
+        <input id="previousRationSource" type="hidden">
+      </section>
+      <details id="nativeInputs" class="legacy-limits hidden"><summary>Emissões informadas diretamente</summary><p>Deixe em branco para estimar pela dieta calculada. Se informar, preencha ambos os valores e a fonte.</p><div class="fields"><div class="field"><label for="nativeMethane">Metano entérico médio do lote (g/dia)</label><input class="input" id="nativeMethane" type="number" min="0" step="any"></div><div class="field"><label for="nativeUrineNitrogen">Nitrogênio urinário médio do lote (kg/dia)</label><input class="input" id="nativeUrineNitrogen" type="number" min="0" step="any"></div><div class="field full"><label for="nativeEmissionSource">Fonte dos valores de emissões</label><input class="input" id="nativeEmissionSource" type="text"></div></div></details>
+      <details class="card scenario-card" id="scenarioManager"><summary>Cenários salvos</summary><p>Guarde a configuração neste navegador. Resultados não são restaurados.</p><div class="fields"><div class="field"><label for="scenarioName">Nome do cenário</label><input class="input" id="scenarioName" maxlength="120" placeholder="Ex.: Lote de novembro"></div><div class="field"><label for="scenarioDescription">Descrição (opcional)</label><input class="input" id="scenarioDescription" maxlength="500"></div></div><div class="scenario-actions"><button class="btn" id="saveScenario" type="button">Salvar cenário</button></div><p id="scenarioStatus" role="status" aria-live="polite"></p><div id="savedScenarios"></div></details>
+      <details class="card scenario-card" id="sensitivityManager"><summary>Análise de sensibilidade e comparação</summary><p>Altere preços ou a disponibilidade para comparar dietas. As variações de preço são simulações.</p><div class="fields"><div class="field"><label for="sensitivityMode">Tipo de experimento</label><select class="input" id="sensitivityMode"><option value="price_sensitivity">Preço — variação percentual</option><option value="availability_sensitivity">Disponibilidade — exclusão ou limites</option><option value="scenario_comparison">Comparar cenários salvos</option></select></div><div class="field" id="sensitivityFeedField"><label for="sensitivityFeed">Ingrediente</label><select class="input" id="sensitivityFeed"></select></div><div class="field" id="sensitivityPricesField"><label for="sensitivityPrices">Variações de preço (%)</label><input class="input" id="sensitivityPrices" value="-20, -10, 0, 10, 20" inputmode="numeric"></div><div class="fields sensitivity-group" id="sensitivityAvailabilityFields"><div class="field"><label class="check"><input type="checkbox" id="sensitivityBaseline" checked> Incluir caso-base (configuração original)</label></div><div class="field"><label class="check"><input type="checkbox" id="sensitivityExclude"> Excluir o ingrediente</label></div><div class="field"><div class="fields"><div class="field"><label for="sensitivityMinKg">Novo mínimo (kg MS/dia)</label><input class="input" id="sensitivityMinKg" inputmode="decimal" placeholder="Opcional"></div><div class="field"><label for="sensitivityMaxKg">Novo máximo (kg MS/dia)</label><input class="input" id="sensitivityMaxKg" inputmode="decimal" placeholder="Opcional"></div></div></div></div></div><div id="sensitivityScenarioPick" class="sensitivity-group hidden"><p class="micro-note">Selecione de 2 a 4 cenários salvos neste navegador para comparar. Cenários não são alterados pela comparação.</p><div id="sensitivityScenarioList" class="fields"></div></div><div class="scenario-actions"><button class="btn" id="runSensitivity" type="button">Executar análise</button></div><p id="sensitivityStatus" role="status" aria-live="polite"></p><div id="sensitivityOutput" class="hidden"></div></details>
+      </div></details>
       <section class="card ingredient-card" aria-labelledby="feedsTitle">
-        <div class="ingredient-head"><div><p class="stage-heading">02 <span aria-hidden="true">/</span> FORMULAÇÃO</p><h2 id="feedsTitle">Ingredientes e preços <span class="count" id="feedCount">5 alimentos</span></h2><p>Edite os valores na tabela; abra os detalhes para definir limites e registrar a fonte.</p></div><button class="btn" id="addFeed" type="button">Adicionar ingrediente</button></div>
-        <div class="tablewrap" role="region" aria-label="Tabela de ingredientes editáveis" tabindex="0"><table class="table feed-table"><thead><tr><th class="ingredient-name" scope="col">Ingrediente</th><th class="money-col" scope="col">Preço<br>R$/kg natural</th><th class="numeric-col" scope="col">MS (%)</th><th class="numeric-col" scope="col">PB (%)</th><th class="numeric-col" scope="col">FDN (%)</th><th class="energy-col" scope="col">Energia<br>Mcal/kg MS</th><th class="forage-col" scope="col">Volumoso</th><th class="action-col" scope="col">Mais dados</th></tr></thead><tbody id="feedRows"></tbody></table></div>
-        <p class="ingredient-note"><strong>Fonte dos preços:</strong> <a href="https://www.cepea.org.br/br/indicador/milho.aspx" target="_blank" rel="noopener noreferrer">Milho no CEPEA</a> · <a href="https://www.cepea.org.br/br/indicador/soja.aspx" target="_blank" rel="noopener noreferrer">Soja no CEPEA</a>. O preço histórico do milho é apenas uma referência; os outros preços de exemplo são hipotéticos. Soja em grão não equivale a farelo de soja.</p>
-        <div class="ingredient-footer"><div><button class="btn primary" id="run" type="button">Calcular dieta de menor custo <span aria-hidden="true">→</span></button><div class="micro-note">O cálculo usa programação linear. O resultado aparece na guia Resultados.</div></div><div class="action-pair"><button class="btn" id="exportConfig" type="button">Exportar cenário</button><button class="btn" id="reset" type="button">Restaurar exemplo</button></div></div>
+        <div class="ingredient-head"><div><p class="stage-heading" id="formulationStage">03 <span aria-hidden="true">/</span> FORMULAÇÃO</p><h2 id="feedsTitle">Ingredientes <span class="count" id="selectedFeedCount">0 selecionados</span></h2></div><button class="btn" id="addFeed" type="button">Adicionar ingrediente</button></div>
+        <div id="feedDiscovery" class="feed-discovery hidden"><div class="feed-picker-toolbar"><div class="field"><label for="feedSearch">Pesquisar ingrediente</label><input class="input" id="feedSearch" type="search" placeholder="Nome do ingrediente" autocomplete="off"></div><div class="feed-picker-controls"><label class="feed-check-filter" for="selectedFeedsOnly"><input id="selectedFeedsOnly" type="checkbox"><span>Somente selecionados</span></label><div class="field"><label for="feedCategory">Categoria RuFaS</label><select class="input" id="feedCategory"><option value="">Todas</option></select></div></div></div><div id="feedPicker" class="feed-picker" role="group" aria-label="Ingredientes disponíveis"></div><p id="feedMatches" class="visually-hidden" role="status" aria-live="polite"></p><div id="feedComposition" class="ingredient-note">Foque ou selecione um alimento para consultar sua composição.</div></div>
+        <div class="tablewrap" role="region" aria-label="Tabela de ingredientes editáveis" tabindex="0"><table class="table feed-table"><thead><tr><th class="ingredient-name" scope="col">Ingrediente</th><th class="money-col" scope="col">Valor do preço</th><th class="action-col" scope="col">Ação</th></tr></thead><tbody id="feedRows"></tbody></table></div>
+        <div class="ingredient-footer"><div><button class="btn primary" id="run" type="button">Calcular dieta de menor custo <span aria-hidden="true">→</span></button><div class="micro-note">Informe preços por kg de matéria natural.</div></div><div class="action-pair"><button class="btn" id="reset" type="button">Limpar configuração</button></div></div>
         <div id="errorBox" class="hidden" role="alert"></div>
       </section>
-      <p class="foot">A comparação com a dieta-base depende da soma das quantidades informadas ser igual à ingestão de matéria seca. Valores do exemplo não representam indicação zootécnica.</p>
+      
     </section>
-    <section id="results" class="view hidden results-wrap" aria-label="Resultados da otimização">
-      <div id="resultEmpty" class="empty"><strong>Seu experimento começa na configuração.</strong>Defina o bovino e os ingredientes e pressione “Calcular dieta ótima” para visualizar custos e restrições.</div>
+    <section id="results" class="hidden results-wrap" aria-label="Resultados da otimização" aria-live="polite">
       <div id="resultContent" class="hidden">
-        <div class="result-title"><div><h2>Dieta de menor custo</h2><p id="engine">Resultados para fins acadêmicos</p></div><div class="section-actions"><button class="btn sm" id="downloadCsv" type="button">Exportar CSV</button><button class="btn sm" type="button" onclick="window.print()">Imprimir</button></div></div>
-        <div class="result-overview"><div class="hero-metric"><div class="k">CUSTO ESTIMADO / ANIMAL / DIA</div><div class="v" id="costDay">—</div><div class="s">Cenário otimizado · valores dependem das fontes informadas</div></div><div class="metrics"><div class="metric"><div class="k">Custo em 30 dias</div><div class="v" id="costMonth">—</div><div class="s">Por animal</div></div><div class="metric"><div class="k">Ingestão de MS</div><div class="v" id="rDmi">—</div><div class="s">kg/dia</div></div><div class="metric"><div class="k">Economia vs. base</div><div class="v" id="saving">—</div><div class="s" id="savingLabel">Informe base válida</div></div></div></div>
-        <div class="res-grid"><section class="card"><h2>Ingredientes da dieta</h2><p class="sub">Percentual de cada alimento na matéria seca total</p><div id="bars"></div><h3>Quantidades e custos</h3><div class="tablewrap"><table class="table" style="min-width:550px"><thead><tr><th>Ingrediente</th><th>kg MS/dia</th><th>kg natural/dia</th><th>Custo diário</th></tr></thead><tbody id="resultRows"></tbody></table></div></section><section class="card"><h2>Restrições atendidas</h2><p class="sub">Valores calculados e metas definidas para o estudo</p><div id="checks"></div><div class="notice"><strong>Identificação do cálculo.</strong> Resultado do modelo linear SciPy/HiGHS; não é uma simulação nativa do RuFaS. Para uma análise com RuFaS, use a guia correspondente.</div></section></div>
+        <div class="result-title"><div><h2>Dieta de menor custo</h2><p id="engine">Motor de cálculo: HiGHS (modelo linear temporário)</p></div><div class="section-actions"><button class="btn sm" id="printResults" type="button">Imprimir</button></div></div>
+        <div class="result-overview"><div class="hero-metric"><div class="k" id="costDayLabel">CUSTO ESTIMADO / ANIMAL / DIA</div><div class="v" id="costDay">—</div><div class="s" id="costBasisNotice">Cenário otimizado · valores dependem das fontes informadas</div></div><div class="metrics"><div class="metric"><div class="k">Custo em 30 dias</div><div class="v" id="costMonth">—</div><div class="s">Por animal</div></div><div class="metric"><div class="k">Ingestão de MS</div><div class="v" id="rDmi">—</div><div class="s">kg/dia</div></div><div class="metric"><div class="k">Economia vs. base</div><div class="v" id="saving">—</div><div class="s" id="savingLabel">Informe base válida</div></div></div></div>
+        <div class="res-grid"><section class="card"><h2>Composição otimizada</h2><p class="sub">Participação na matéria seca total</p><div id="bars"></div><h3>Quantidades e custos</h3><div class="tablewrap"><table class="table" style="min-width:700px"><thead><tr><th>Ingrediente / ID</th><th>kg MS/dia</th><th>kg natural/dia</th><th>% MS</th><th>Preço/kg natural</th><th>Custo diário</th><th>% custo</th></tr></thead><tbody id="resultRows"></tbody></table></div></section><section class="card"><h2>Diagnóstico de restrições</h2><p class="sub">Margens da função nativa; tolerância numérica 0,0001</p><div id="checks"></div><details class="result-method"><summary>Fontes e método do cálculo</summary><div class="notice" id="modelNotice"><strong>Modelo linear exploratório.</strong> Resultados exigem avaliação técnica.</div></details></section></div>
+        <div id="nativeAnalysis" class="hidden analysis-sections"><section class="card"><h2>Avaliação nutricional</h2><p class="sub">Oferta calculada da composição RuFaS; energia e proteína metabolizável dependem de funções não lineares e aparecem sem oferta isolada.</p><div class="tablewrap"><table class="table"><thead><tr><th>Nutriente</th><th>Exigência</th><th>Unidade da exigência</th><th>Oferta</th><th>Unidade da oferta</th><th>Avaliação</th></tr></thead><tbody id="nutrientRows"></tbody></table></div></section><section class="card"><h2>Comparação econômica</h2><div id="economicAnalysis"></div></section></div>
       </div>
     </section>
-    <section id="native" class="view hidden native" aria-label="Integração com RuFaS"><div class="card"><p class="stage-heading">Integração científica · experimental</p><h2>Motor nativo do RuFaS</h2><p class="sub">Esta área chama <code>RUFAS.biophysical.animal.ration.ration_optimizer.RationOptimizer</code> no Python local. Para isso, use os dados completos de <code>Feed</code> e <code>NutritionRequirements</code> da versão instalada do RuFaS. A tabela simplificada da configuração não substitui esses dados.</p>
-      <div class="steps"><div class="step"><b>Instale o RuFaS</b>Clone o repositório e instale suas dependências no ambiente Python do servidor.</div><div class="step"><b>Prepare o conjunto nutricional</b>Use os dados da biblioteca e as exigências do grupo para gerar o JSON completo.</div><div class="step"><b>Execute e valide</b>Importe os dados e confira a viabilidade antes de utilizar o resultado na pesquisa.</div></div>
-      <div class="fields"><div class="field full"><label for="nativeJson">Arquivo JSON completo</label><div class="upload"><input type="file" id="nativeJson" accept=".json,application/json"><p class="field hint">Use Feed e NutritionRequirements completos da instalação local, com valores e fontes validados. Dados enviados apenas ao servidor local.</p></div></div></div>
-      <div class="actions"><button class="btn primary" id="runNative" type="button">Executar com RuFaS</button><button class="btn" id="nativeSchema" type="button">Baixar modelo JSON</button></div>
-      <div id="nativeOutput" class="formula" aria-live="polite" style="margin-top:18px">Nenhuma execução nativa realizada.</div><div class="notice"><strong>Entrada científica:</strong> o modo nativo usa NRC nesta versão. Os poucos campos do modo didático não bastam para gerar Feed e NutritionRequirements completos. Valide composição, exigências, unidades e preços antes de interpretar a dieta.</div>
-    </div></section>
-    <section id="method" class="view hidden doc" aria-label="Metodologia"><div class="card"><p class="stage-heading">Referência metodológica</p><h2>Modelo de Pesquisa Operacional</h2><p class="method-lead">A variável de decisão <strong>xᵢ</strong> representa a quantidade de matéria seca do ingrediente i, em kg por animal/dia. O modelo busca o menor custo sujeito às metas nutricionais informadas.</p>
-      <h3>Função objetivo</h3><div class="formula">Min Z = Σ (preço_i / fração_MS_i) × x_i</div>
-      <h3>Restrições do modelo didático</h3><div class="formula">Σ x_i = DMI (kg de matéria seca por dia)
-Σ PB_i × x_i ≥ DMI × PB_min
-DMI × FDN_min ≤ Σ FDN_i × x_i ≤ DMI × FDN_max
-Σ Energia_i × x_i ≥ Energia_min (Mcal/dia)
-Σ x_i (somente volumosos) ≥ DMI × Volumoso_min
-mín_i ≤ x_i ≤ máx_i</div>
-      <p>As proporções de proteína, fibra e volumosos são expressas como frações entre 0 e 1. O cálculo didático utiliza programação linear pelo algoritmo HiGHS da biblioteca SciPy.</p>
-      <h3>Por que integrar com RuFaS?</h3><p>O RuFaS fornece o otimizador <code>RationOptimizer</code>, que utiliza programação não linear e restrições adicionais. O adaptador permite chamá-lo com objetos científicos completos, sem preencher nutrientes ausentes com suposições.</p>
-      <h3>Como tratar restrições não lineares</h3><p>Uma restrição é não linear quando a oferta ou o limite depende de relações que não podem ser representadas por uma soma fixa de coeficientes vezes as quantidades dos ingredientes. No RuFaS, a oferta de nutrientes é recalculada a partir da dieta e pode depender do consumo, da digestibilidade e das interações entre nutrientes e alimentos. Não simplifique essas relações para PB, FDN ou energia linear quando o objetivo for um resultado RuFaS.</p>
-      <p>O <code>RationOptimizer</code> minimiza o custo com o método SLSQP e recebe funções de restrição que calculam a diferença entre oferta e exigência (ou entre oferta e limite). Para limites inferiores, a diferença deve ser não negativa; para limites superiores, a função é construída para também retornar valor não negativo quando respeitada. A aplicação deve avaliar essas funções no resultado final e mostrar cada restrição como atendida ou não atendida, com sua folga e unidade quando disponível.</p>
-      <p>Se o solucionador falhar, não apresente uma dieta como viável. Informe que não encontrou solução e, quando possível, mostre as restrições que falharam. Verifique os dados e unidades, a compatibilidade entre limites dos ingredientes e ingestão total, e se as exigências podem ser atendidas pelos alimentos selecionados. Como SLSQP é um método local, uma solução encontrada não prova que foi encontrado o mínimo global; registre padrão nutricional, entradas, limites e estado do solucionador, e compare execuções quando a sensibilidade ao ponto inicial for relevante.</p>
-      <p><strong>Separação dos motores:</strong> o cálculo didático desta aplicação usa HiGHS e restrições lineares. Ele não implementa as restrições não lineares do RuFaS. Só identifique um resultado como RuFaS quando a chamada nativa tiver sido executada e suas restrições avaliadas.</p>
-      <h3>Origem e limites dos dados</h3><p>CEPEA: cotação, praça, unidade e data. Tabelas nutricionais NASEM/NRC ou equivalentes: composição e exigências. O exemplo de milho em saca de 60 kg é convertido para R$/kg de matéria natural. Não substitua o preço de farelo de soja pelo indicador de soja em grão.</p><p>Peso e produção de leite não determinam automaticamente as exigências no modo didático. A ferramenta não substitui formulação zootécnica profissional e não deve apresentar resultados SciPy como simulações RuFaS. Observe a licença dos dados CEPEA.</p>
-      <p><a href="https://ruminantfarmsystems.github.io/RuFaS/_code/RUFAS.biophysical.animal.ration.ration_optimizer.html" target="_blank" rel="noopener noreferrer">Documentação do otimizador RuFaS</a> · <a href="https://www.cepea.org.br/br/indicador/" target="_blank" rel="noopener noreferrer">CEPEA</a> · <a href="https://ruminantfarmsystems.github.io/RuFaS/_wiki/Data-Collection-App.html" target="_blank" rel="noopener noreferrer">Data Collection App</a></p>
-    </div></section>
   </main>
 </div>
 </div>
 <script>
 
 'use strict';
-// Preços do exemplo exceto milho: HIPOTÉTICOS. Composições: ILUSTRATIVAS; devem ser validadas.
-const initialFeeds=[
- {name:'Silagem de milho',dm:35,cp:8,ndf:42,energy:1.48,price:0.25,min:4,max:15,baseline:10,forage:true,source:'Hipotético (substituir)',source_date:''},
- {name:'Feno de capim',dm:86,cp:10,ndf:63,energy:1.25,price:1.20,min:0,max:7,baseline:2,forage:true,source:'Hipotético (substituir)',source_date:''},
- {name:'Milho em grão',dm:88,cp:9,ndf:11,energy:2.01,price:1.1705,min:0,max:7,baseline:3,forage:false,source:'CEPEA — milho ESALQ/B3 (R$ 70,23/sc 60kg)',source_date:'2026-08-31'},
- {name:'Farelo de soja',dm:89,cp:48,ndf:12,energy:1.92,price:2.40,min:0,max:6,baseline:4,forage:false,source:'Hipotético (não é indicador de soja)',source_date:''},
- {name:'Polpa cítrica',dm:90,cp:7,ndf:21,energy:1.73,price:1.40,min:0,max:5,baseline:1,forage:false,source:'Hipotético (substituir)',source_date:''}
-];
-let feeds=structuredClone(initialFeeds), lastResult=null;
+let feeds=[], lastResult=null,lastConfiguration=null,lastEconomicComparison=null,lastEconomicRequest=null,lastEconomicRequestVersion=0;
+const nativeWorkflow=new URLSearchParams(location.search).get('engine')!=='highs';
+let nativeFeeds=[],previousRation=[],importedPrices=new Map(),currentCompositionFeedId=null,lastSensitivityResult=null,lastRequirementsData=null;
+let calculationState='idle', requestVersion=0, activeRequest=null;
+function invalidateResult(){requestVersion++;lastEconomicRequestVersion++;lastEconomicComparison=null;lastEconomicRequest=null;if(activeRequest){activeRequest.abort();activeRequest=null;const button=$('run');button.disabled=false;button.innerHTML='Calcular dieta de menor custo <span aria-hidden="true">→</span>';}lastResult=null;lastConfiguration=null;calculationState='idle';invalidateSensitivity();$('results').classList.add('hidden');$('resultContent').classList.add('hidden');$('printResults').disabled=true;scheduleWorkingSave();}
+function showError(message){$('errorBox').textContent=message;$('errorBox').classList.remove('hidden');}
 const $=id=>document.getElementById(id);
+const i18nMessages = {
+'NutriPlan | Otimização de dietas':'NutriPlan | Diet Optimization','Ir para configuração':'Skip to setup','Menu do aplicativo':'Application menu','Idioma':'Language','Aparência':'Appearance','Claro':'Light','Escuro':'Dark','Automático':'System','FORMULAÇÃO ALIMENTAR':'FEED FORMULATION','Otimização de dietas':'Diet optimization','Configure a vaca em lactação, escolha os ingredientes e calcule a dieta pelas exigências NASEM 2021.':'Configure the lactating cow, choose ingredients, and calculate the ration using NASEM 2021 requirements.','Configuração da dieta':'Diet setup','PERFIL DO ANIMAL':'ANIMAL PROFILE','Categoria do animal':'Animal category','Informe a fase, a paridade e os dados fisiológicos desta vaca.':'Enter this cow’s lactation phase, parity, and physiological data.','Categoria animal':'Animal category','Vaca em lactação':'Lactating cow','Vaca de primeira lactação':'First-lactation cow','Parâmetros complementares':'Additional parameters','Dieta atual do lote (opcional)':'Current herd ration (optional)','Se você tiver uma dieta atual, informe os alimentos e as quantidades em kg MS/dia.':'If you have a current ration, enter its ingredients and amounts in kg DM/day.','Adicionar alimento':'Add feed','Fonte e período do registro':'Record source and period','Ex.: registro do lote, período e responsável':'E.g., herd record, period, and responsible person','Emissões informadas diretamente':'Directly supplied emissions','Use médias documentadas do lote. O cálculo NASEM precisa de metano e nitrogênio urinário; sem dieta ou essas entradas, a otimização fica incompleta.':'Use documented herd averages. NASEM requires methane and urinary nitrogen; without a ration or these inputs, optimization is incomplete.','Metano entérico médio do lote (g/dia)':'Herd average enteric methane (g/day)','Nitrogênio urinário médio do lote (kg/dia)':'Herd average urinary nitrogen (kg/day)','Fonte dos valores de emissões':'Emission data source','Informe a dieta atual do lote ou as médias documentadas de metano e nitrogênio urinário.':'Enter the current herd ration or documented methane and urinary nitrogen averages.','Alimento':'Feed','Selecione um alimento':'Select a feed','Quantidade (kg MS/dia)':'Amount (kg DM/day)','Ajustar peso corporal':'Adjust body weight','Peso corporal (kg)':'Body weight (kg)','Exigências nutricionais · NASEM 2021':'Nutritional requirements · NASEM 2021','Carregando perfil nutricional…':'Loading nutritional profile…','Parâmetros adicionais do animal':'Additional animal parameters','Preencha também os campos exigidos pelo cálculo NASEM. Campos em branco não recebem valores presumidos.':'Also complete fields required by the NASEM calculation. Blank fields are not assigned assumed values.','Emissões informadas diretamente':'Enter emissions directly','Use esta opção apenas quando houver valores válidos para o lote e uma fonte documentada. A dieta anterior preenchida será usada em vez destes campos.':'Use these fields only when valid pen values and a documented source are available. A supplied previous ration takes precedence.','Metano entérico médio do lote (g/dia)':'Average pen enteric methane (g/day)','Nitrogênio urinário médio do lote (kg/dia)':'Average pen urinary nitrogen (kg/day)','Fonte dos valores de emissões':'Source for emission values','Parâmetros do modelo linear HiGHS':'HiGHS linear model parameters','Estes limites continuam independentes do cálculo NASEM até a integração científica dos modelos.':'These limits remain separate from the NASEM calculation until the models are scientifically integrated.','Produção de leite (kg/dia)':'Milk production (kg/day)','Ingestão de MS (kg/dia)':'Dry matter intake (kg/day)','Energia mínima (Mcal/dia)':'Minimum energy (Mcal/day)','Proteína bruta mínima (% MS)':'Minimum crude protein (% DM)','FDN mínima (% MS)':'Minimum NDF (% DM)','FDN máxima (% MS)':'Maximum NDF (% DM)','Volumosos mínimos (% MS)':'Minimum forage (% DM)','Como preparar os dados':'Preparing your data','Para comparar dietas, mantenha consistentes as unidades, os preços e as referências nutricionais.':'Keep units, prices, and nutritional references consistent when comparing rations.','Preço':'Price','Use R$/kg de matéria natural, com data e fonte da cotação.':'Enter a price per kg as-fed with the quote date and source.','Composição':'Composition','Registre PB, FDN e energia com referência nutricional.':'Record crude protein, NDF, and energy with a nutritional reference.','Restrições':'Constraints','Confira os limites de inclusão e a dieta-base de cada alimento.':'Check each ingredient inclusion limit and baseline amount.','Configurações avançadas, cenários e análises':'Advanced settings, scenarios, and analyses','CONTEXTO ALIMENTAR':'RATION CONTEXT','Dieta anterior':'Previous ration','Informe os alimentos e as quantidades realmente fornecidos.':'Enter the feeds and amounts actually provided.','Adicionar alimento à dieta anterior':'Add feed to previous ration','Fonte da dieta anterior':'Previous-ration source','Cenários salvos':'Saved scenarios','Nome do cenário':'Scenario name','Descrição (opcional)':'Description (optional)','Salvar cenário':'Save scenario','Análise de sensibilidade e comparação':'Sensitivity analysis and comparison','Altere preços ou a disponibilidade para comparar dietas. As variações de preço são simulações.':'Change prices or availability to compare rations. Price variations are simulations.','Tipo de experimento':'Experiment type','Preço — variação percentual':'Price — percentage change','Disponibilidade — exclusão ou limites':'Availability — exclusion or bounds','Comparar cenários salvos':'Compare saved scenarios','Ingrediente':'Ingredient','Variações de preço (%)':'Price variations (%)','Incluir caso-base (configuração original)':'Include baseline (original configuration)','Excluir o ingrediente':'Exclude the ingredient','Novo mínimo (kg MS/dia)':'New minimum (kg DM/day)','Novo máximo (kg MS/dia)':'New maximum (kg DM/day)','Opcional':'Optional','Selecione de 2 a 4 cenários salvos neste navegador para comparar. Cenários não são alterados pela comparação.':'Select 2 to 4 saved scenarios in this browser to compare. The comparison does not change scenarios.','Executar análise':'Run analysis','FORMULAÇÃO':'FORMULATION','Ingredientes':'Ingredients','5 alimentos':'5 ingredients','Adicionar ingrediente':'Add ingredient','Buscar alimento RuFaS':'Search RuFaS feeds','Pesquisar ingrediente':'Search ingredients','Nome do ingrediente':'Ingredient name','Somente selecionados':'Only selected','Foque ou selecione um alimento para consultar sua composição.':'Focus or select a feed to view its composition.','Na formulação':'In the ration','Categoria RuFaS':'RuFaS category','Todas':'All','Selecione um alimento para consultar sua composição.':'Select a feed to view its composition.','R$/kg natural':'Price/kg as-fed','MS (%)':'DM (%)','PB (%)':'CP (%)','FDN (%)':'NDF (%)','Energia':'Energy','Mcal/kg MS':'Mcal/kg DM','Volumoso':'Forage','Calcular dieta de menor custo':'Calculate lowest-cost ration','Informe preços por kg de matéria natural.':'Enter prices per kg as fed.','Limpar configuração':'Clear configuration','Limpar a configuração atual?':'Clear the current configuration?','Dieta de menor custo':'Lowest-cost ration','Motor de cálculo: HiGHS (modelo linear temporário)':'Calculation engine: HiGHS (temporary linear model)','Imprimir':'Print','CUSTO ESTIMADO / ANIMAL / DIA':'ESTIMATED COST / ANIMAL / DAY','Cenário otimizado · valores dependem das fontes informadas':'Optimized scenario · values depend on the sources provided','Custo em 30 dias':'Cost over 30 days','Por animal':'Per animal','Ingestão de MS':'Dry matter intake','kg/dia':'kg/day','Economia vs. base':'Savings vs. baseline','Informe base válida':'Enter a valid baseline','Composição otimizada':'Optimized composition','Participação na matéria seca total':'Share of total dry matter','Quantidades e custos':'Amounts and costs','Ingrediente / ID':'Ingredient / ID','kg MS/dia':'kg DM/day','kg natural/dia':'kg as-fed/day','% MS':'% DM','Preço/kg natural':'Price/kg as-fed','Custo diário':'Daily cost','% custo':'% of cost','Diagnóstico de restrições':'Constraint diagnostics','Margens da função nativa; tolerância numérica 0,0001':'Native function margins; numerical tolerance 0.0001','Fontes e método do cálculo':'Calculation sources and method','Identificação do cálculo.':'Calculation details.','Avaliação nutricional':'Nutritional assessment','Oferta calculada da composição RuFaS; energia e proteína metabolizável dependem de funções não lineares e aparecem sem oferta isolada.':'Supply is calculated from RuFaS composition. Energy and metabolizable protein use nonlinear functions and are shown without standalone supply values.','Nutriente':'Nutrient','Exigência':'Requirement','Unidade da exigência':'Requirement unit','Oferta':'Supply','Unidade da oferta':'Supply unit','Avaliação':'Assessment','Comparação econômica':'Economic comparison','FORMULAÇÃO':'FORMULATION','Peso adulto (kg)':'Mature body weight (kg)','Escore de condição corporal (1–5)':'Body condition score (1–5)','Dias em lactação':'Days in milk','Dia de gestação':'Day of pregnancy','Ganho diário (g)':'Daily gain (g)','Proteína verdadeira do leite (%)':'Milk true protein (%)','Produção de leite (kg/dia)':'Milk production (kg/day)','Distância percorrida (m)':'Distance traveled (m)','FDN da dieta anterior (%)':'Previous-ration NDF (%)','FDN informada (%)':'Manually supplied NDF (%)','Quando vazia, a FDN é derivada da composição da dieta candidata.':'When blank, NDF is derived from candidate ration composition.','Sem dieta anterior, o RuFaS calcula metano e nitrogênio urinário a partir de cada dieta candidata; use os campos abaixo apenas para inserir valores documentados.':'Without a previous ration, RuFaS calculates methane and urinary nitrogen from each candidate ration; use the fields below only for documented values.','Deixe em branco para estimar pela dieta calculada. Se informar, preencha ambos os valores e a fonte.':'Leave blank to estimate from the calculated ration. If entered, provide both values and the source.','Informe ambos os valores de emissão ou deixe os dois vazios para usar os cálculos nativos na dieta candidata.':'Enter both emission values or leave both blank to use native calculations on each candidate ration.','Informe a fonte dos valores de emissões.':'Enter the source for emission values.','FDN da dieta otimizada será calculada durante a formulação.':'NDF for the optimized ration will be calculated during formulation.','Cálculo nativo RuFaS da dieta candidata':'RuFaS native candidate-feed calculation','Confinamento':'Barn','Pastejo':'Grazing','Fósforo do módulo de processo (g/dia)':'Process-module phosphorus (g/day)','Alimento RuFaS NASEM':'RuFaS NASEM feed','Selecione um alimento':'Select a feed','Disponível para a dieta':'Available for ration','Mín. kg MS':'Min. kg DM','Máx. kg MS':'Max. kg DM','Dieta-base kg MS':'Baseline kg DM','Moeda (ISO 4217)':'Currency (ISO 4217)','Unidade do preço':'Price unit','kg natural':'kg as-fed','kg MS':'kg DM','tonelada natural':'metric ton as-fed','Tipo de fonte':'Source type','Informado manualmente':'Manually entered','Referência de mercado':'Market reference','Histórico':'Historical','Demonstração':'Demonstration','Custo real':'Actual cost','Fonte do preço':'Price source','Data da fonte':'Source date','Região (opcional)':'Region (optional)','Notas (opcional)':'Notes (optional)','Fonte da composição':'Composition source','Defina limites em kg de matéria seca por dia e registre a referência do preço.':'Set limits in kg dry matter per day and record the price reference.','Selecione um alimento':'Select a feed','Fonte da composição':'Composition source','Categoria':'Category','Fonte da composição:':'Composition source:','Fonte não informada':'Source not provided','Composição:':'Composition:','R$/kg natural':'Price/kg as-fed','Exigências nutricionais · NASEM 2021':'Nutritional requirements · NASEM 2021','Buscar alimento RuFaS':'Search RuFaS feeds','Remover':'Remove','Excluir':'Delete','Renomear':'Rename','Carregar':'Load','Consultar fonte':'View source','Cenário de referência indisponível.':'Reference scenario unavailable.','Selecione pelo menos dois ingredientes.':'Select at least two ingredients.','Mantenha pelo menos dois alimentos.':'Keep at least two feeds.','Novo ingrediente':'New ingredient','Informe a fonte':'Enter the source','Didático linear; não é resultado RuFaS':'Linear teaching model; not a RuFaS result','R$/kg matéria natural':'Price/kg as-fed','Composição ilustrativa - validar':'Illustrative composition — validate','Selecione pelo menos dois alimentos RuFaS NASEM disponíveis.':'Select at least two available RuFaS NASEM feeds.','Os alimentos disponíveis não podem repetir o mesmo ID RuFaS.':'Available feeds cannot use the same RuFaS ID more than once.','Informe uma dieta anterior documentada ou as médias do lote de metano e nitrogênio urinário com fonte.':'Enter a documented previous ration or sourced pen-average methane and urinary nitrogen values.','Armazenamento local indisponível. O cenário não foi salvo neste navegador.':'Local storage is unavailable. Export JSON to save this scenario.','Cenário incompatível.':'Incompatible scenario.','Sem descrição':'No description','Nenhum cenário salvo neste navegador.':'No scenarios saved in this browser.','Em edição':'In progress','Cenário “':'Scenario “','” carregado. Calcule novamente para obter resultados atuais.':'” loaded. Recalculate to get current results.','Já existe um cenário com esse nome. Escolha outro nome ou renomeie o existente.':'A scenario with this name already exists. Choose another name or rename the existing one.','” salvo neste navegador.':'” saved in this browser.','Cenário sem nome':'Untitled scenario','Descartar alterações não salvas no cenário atual?':'Discard unsaved changes to the current scenario?','Novo nome do cenário:':'New scenario name:','Já existe um cenário com esse nome.':'A scenario with this name already exists.','” deste navegador?':'” from this browser?','Cenário excluído.':'Scenario deleted.','Nenhum cenário salvo. Salve cenários para comparar.':'No scenarios saved. Save or import scenarios to compare.','Informe ao menos uma variação de preço.':'Enter at least one price variation.','A variação deve ser maior que -100% para manter preço positivo.':'The variation must be greater than -100% to keep the price positive.','Variação excede o limite de 1000%.':'Variation exceeds the 1000% limit.','Máximo de 9 variações de preço por análise.':'Maximum of 9 price variations per analysis.','Variações repetidas devem ser removidas.':'Remove duplicate variations.','Novo mínimo deve ser número não negativo (kg MS/dia).':'New minimum must be a nonnegative number (kg DM/day).','Novo máximo deve ser número não negativo (kg MS/dia).':'New maximum must be a nonnegative number (kg DM/day).','Marque o caso-base, um limite novo ou a exclusão.':'Select the baseline, a new bound, or exclusion.','Máximo de 5 experimentos de disponibilidade.':'Maximum of 5 availability experiments.','Selecione de 2 a 4 cenários salvos para comparar.':'Select 2 to 4 saved scenarios to compare.','Selecione o ingrediente do experimento.':'Select an ingredient for the experiment.','Executando o pipeline nativo RuFaS…':'Running the native RuFaS pipeline…','Análise rejeitada pelo servidor.':'Analysis rejected by the server.','configuração original':'original configuration','configuração própria':'custom configuration','Mesma moeda nos preços dos experimentos.':'Experiment prices use the same currency.','Moedas diferentes: custos não são diretamente comparáveis.':'Different currencies: costs are not directly comparable.','Mesmas unidades de preço.':'Price units match.','Unidades de preço diferentes: custos não são diretamente comparáveis.':'Different price units: costs are not directly comparable.','Datas de referência dos preços divergem entre cenários.':'Price reference dates differ across scenarios.','Configurações animais distintas: diferenças de custo não são atribuíveis apenas a ingredientes/preços.':'Animal configurations differ: cost differences cannot be attributed only to ingredients or prices.','Impressões digitais científicas (commit/biblioteca) divergem entre cenários.':'Scientific fingerprints (commit/library) differ across scenarios.','EXPERIMENTOS':'EXPERIMENTS','MENOR CUSTO ENCONTRADO':'LOWEST OBSERVED COST','VOLUME DOS CUSTOS':'COST RANGE','Menor custo observado entre soluções viáveis; não é prova de ótimo global':'Lowest observed cost among feasible solutions; this does not prove a global optimum','Variação relativa indisponível (bases incomparáveis ou uma única solução viável)':'Relative change unavailable (incomparable baselines or only one feasible solution)','Custo diário otimizado em função da variação do preço do ingrediente':'Optimized daily cost by ingredient price change','Custo por cenário: rótulos indicam os valores; eixo parte de zero':'Cost by scenario; labels show values and the axis starts at zero','Custo diário otimizado por experimento avaliado':'Optimized daily cost by experiment','Custo diário por variação de preço':'Daily cost by price change','Custo diário por cenário':'Daily cost by scenario','Comparabilidade':'Comparability','Referência:':'Reference:','cenários salvos':'saved scenarios','cada experimento repetiu o pipeline nativo RuFaS alterando um insumo por vez.':'each experiment reran the native RuFaS pipeline while changing one input at a time.','Moeda dos preços simulados:':'Currency for simulated prices:','Experimentos executados':'Executed experiments','Experimento':'Experiment','Insumo':'Input','Valor original':'Original value','Valor do experimento':'Experiment value','Status do solver':'Solver status','Viabilidade':'Feasibility','Custo/dia (u.m.)':'Cost/day (unspecified units)','Δ custo/dia':'Δ cost/day','Δ custo %':'Δ cost %','preço':'price','disponibilidade':'availability','viável':'feasible','falhou':'failed','Custo diário por variação de preço':'Daily cost by price change','A tabela acima é a fonte exata dos números; o gráfico apenas ilustra a tendência.':'The table above contains the exact values; the chart only illustrates the trend.','Ingrediente — quantidade por experimento e diferença absoluta/relativa contra o experimento de referência':'Ingredient — amount per experiment and absolute/relative difference from the reference experiment','Ingrediente':'Ingredient','Calculando…':'Calculating…','Não foi possível otimizar.':'Optimization failed.','O servidor retornou um resultado incompleto.':'The server returned an incomplete result.','Motor de cálculo: RuFaS — NASEM 2021':'Calculation engine: RuFaS — NASEM 2021','Motor de cálculo: HiGHS (modelo linear temporário)':'Calculation engine: HiGHS (temporary linear model)','Cálculo RuFaS da dieta anterior':'RuFaS calculation from the previous ration','Valores informados para o cenário':'Values entered for this scenario','Fonte não informada':'Source not provided','Identificação do cálculo.':'Calculation details.','Otimização concluída':'Optimization completed','código':'status','Perfil:':'Profile:','fonte:':'source:','Emissões:':'Emissions:','Restrições avaliadas pelo RuFaS.':'Constraints evaluated by RuFaS.','A viabilidade numérica não substitui validação biológica independente.':'Numerical feasibility does not replace independent biological validation.','Cálcio':'Calcium','Fósforo':'Phosphorus','Proteína · limite mínimo':'Protein · minimum limit','Proteína · limite máximo':'Protein · maximum limit','FDN · limite mínimo':'NDF · minimum limit','FDN · limite máximo':'NDF · maximum limit','FDN de volumosos':'Forage NDF','Gordura':'Fat','Ingestão de matéria seca · máximo':'Dry matter intake · maximum','Ingestão de matéria seca · mínimo':'Dry matter intake · minimum','Energia líquida · NASEM':'Net energy · NASEM','Margem numérica:':'Numerical margin:','tolerância:':'tolerance:','unidade interna do RuFaS':'internal RuFaS unit','Atendida':'Met','Violada':'Violated','Matéria seca':'Dry matter','Energia líquida':'Net energy','Proteína metabolizável':'Metabolizable protein','FDN':'NDF','Proteína bruta':'Crude protein','Amido':'Starch','Oferta calculada; ver restrições nativas':'Calculated supply; see native constraints','Oferta não avaliada isoladamente':'Supply not evaluated separately','Dieta anterior informada pelo usuário.':'Previous ration entered by the user.','Custo anterior:':'Previous cost:','/dia; otimizado:':'/day; optimized:','Não há economia diretamente comparável:':'No directly comparable savings:','moedas ou origem monetária incompatíveis':'currencies or monetary sources are incompatible','datas de referência diferentes ou ausentes':'reference dates differ or are missing','Informe fontes, moedas e datas consistentes para comparar.':'Enter consistent sources, currencies, and dates to compare.','Preços por kg natural; custos estimados por animal.':'Prices are per kg as-fed; costs are estimates per animal.','Indicador':'Metric','Dieta anterior':'Previous ration','Dieta otimizada':'Optimized ration','Diferença (anterior − otimizada)':'Difference (previous − optimized)','Por dia':'Per day','Em 30 dias':'Over 30 days','Diferença percentual:':'Percentage difference:','não calculável (custo anterior zero)':'not calculable (previous cost is zero)','Valor negativo indica aumento de custo. A comparação não prova lucratividade nem equivalência nutricional das dietas.':'A negative value indicates a cost increase. This comparison does not prove profitability or nutritional equivalence.','Comparação econômica incompleta.':'Economic comparison is incomplete.','Informe preços/kg natural dos alimentos RuFaS':'Enter prices/kg as-fed for RuFaS feeds','Não foi informada dieta anterior.':'No previous ration was provided.','A otimização nutricional continua válida.':'Nutritional optimization remains available.','Base:':'Baseline:','Dieta anterior informada pelo usuário.':'Previous ration entered by the user.','Custo estimado / animal / dia':'Estimated cost / animal / day','Energia líquida':'Net energy','Dados adicionais necessários:':'Additional data required:','Calculando exigências…':'Calculating requirements…','Falha ao carregar o perfil.':'Could not load the profile.','obrigatório':'required','valor documentado/editável':'documented/editable value','Cálculo indisponível.':'Calculation unavailable.','Requisitos calculados com RuFaS NASEM 2021 a partir dos dados informados. Limites de proteína e ingestão ainda dependem da configuração da dieta. Fonte do perfil:':'Requirements calculated with RuFaS NASEM 2021 from the entered data. Protein and intake limits still depend on ration configuration. Profile source:','; valores do cenário de referência sujeitos à revisão.':'; reference-scenario values are subject to review.','Requisito':'Requirement','Mínimo':'Minimum','Máximo':'Maximum','Unidade':'Unit','Situação do limite':'Limit status','Calculado pelo NASEM':'Calculated by NASEM','Depende da dieta':'Depends on the ration','Definido na formulação':'Defined during formulation','Parâmetros adicionais do animal':'Additional animal parameters','Requisitos calculados':'Requirements calculated','Importados':'Imported','Não há':'There are no','Nenhum alimento encontrado.':'No feeds found.','Nenhum ingrediente selecionado.':'No ingredients selected.','Selecione um alimento para consultar sua composição.':'Select a feed to view its composition.','Demonstração':'Demonstration','Referência de mercado':'Market reference','Histórico':'Historical','Manual':'Manual','u.m.':'unspecified units','sem classificação':'unclassified','fonte não documentada':'source not documented','sem data':'no date','A otimização nutricional continua válida.':'Nutritional optimization remains available.','Sem nome':'Unnamed','Não há economia diretamente comparável:':'No directly comparable savings:','Informar':'Enter','Manter':'Keep','A dieta anterior contém alimentos repetidos.':'The previous ration contains duplicate feeds.','Informe pelo menos dois alimentos da dieta anterior.':'Enter at least two feeds in the previous ration.','Revise os alimentos e as quantidades da dieta anterior em kg de matéria seca por dia.':'Review the previous-ration feeds and amounts in kg dry matter per day.','Informe a fonte da dieta anterior.':'Enter the previous-ration source.','Informe a dieta atual do lote ou os dados avançados de emissões.':'Enter a documented previous ration or advanced emission data.','Informe um peso corporal válido.':'Enter a valid body weight.','Máximo de 25 ingredientes.':'Maximum of 25 ingredients.','Cenário de referência indisponível.':'Reference scenario unavailable.','Subcategoria da lactação':'Lactation phase','Escolha uma fase':'Choose a phase','Recém-parida':'Fresh cow','Início da lactação':'Early lactation','Meio da lactação':'Mid lactation','Final da lactação':'Late lactation','Paridade / número de lactações':'Parity / number of lactations','Primeira lactação (1)':'First lactation (1)','Multípara (2+)':'Multiparous (2+)','Gestante':'Pregnant','Dia de gestação':'Day of pregnancy','Peso corporal (kg)':'Body weight (kg)','Dias em lactação':'Days in milk','Produção diária de leite (kg)':'Daily milk production (kg)','Gordura do leite (%)':'Milk fat (%)','Proteína verdadeira do leite (%)':'True milk protein (%)','Parâmetros individuais informados pelo usuário.':'Individual parameters entered by the user.','Selecione uma fase da lactação.':'Select a lactation phase.','Informe o dia de gestação ou desmarque Gestante.':'Enter the day of pregnancy or clear Pregnant.','Informe a dieta atual do lote ou as médias documentadas de metano e nitrogênio urinário.':'Enter a documented previous ration or pen methane and urinary nitrogen averages with a source.','Os campos em branco não recebem valores presumidos.':'Blank fields are not assigned assumed values.','A FDN informada deve corresponder à composição da dieta anterior RuFaS.':'Entered NDF must match the RuFaS composition of the previous ration.'
+};
+const i18nExtraMessages = {
+  'Selecione':'Select','Tabela de ingredientes editáveis':'Editable ingredient table','Preferências':'Preferences',
+  'Guarde a configuração neste navegador. Resultados não são restaurados.':'Save the configuration in this browser. Results are not restored.',
+  'Valor do preço':'Price value','Ação':'Action','Valor informado na interface':'Value entered in the interface',
+  'sem preço documentado':'no documented price','sem classificação':'unclassified','fonte não documentada':'source not documented','sem data':'no date',
+  
+  'Composição:':'Composition:',
+  'Intervalo entre partos (dias)':'Calving interval (days)',
+  'Gordura do leite (%)':'Milk fat (%)',
+  'Lactose do leite (%)':'Milk lactose (%)',
+  'Alojamento':'Housing',
+  'Os preços dos alimentos candidatos usam moedas incompatíveis.':'Candidate feed prices use incompatible currencies.',
+  'Quantidade (kg MS/dia)':'Amount (kg DM/day)','Preço (opcional)':'Price (optional)','Preço/kg natural (opcional)':'Price/kg as-fed (optional)','Data do preço':'Price date',
+  'Ingredientes disponíveis':'Available ingredients','Mostrar seletor de datas':'Show date picker','kg natural':'kg as-fed','% natural':'% as-fed','% MS':'% DM','Mcal/dia':'Mcal/day','g/dia':'g/day',
+  'Comparação econômica incompleta. Informe preços/kg natural dos alimentos RuFaS 1, 31, 46. A otimização nutricional continua válida.':'Economic comparison is incomplete. Enter as-fed prices for RuFaS feeds 1, 31, and 46. Nutritional optimization remains available.',
+};
+const i18nEnglishToPtBr = Object.fromEntries([...Object.entries(i18nMessages),...Object.entries(i18nExtraMessages)].map(([source,target])=>[target,source]));
+let activeLocale = document.documentElement.lang === 'en-US' ? 'en-US' : 'pt-BR';
+const preferenceKeys = {language:'nutriplan.language.v1',theme:'nutriplan.theme.v1'};
+const textOriginals = new WeakMap(), attributeOriginals = new WeakMap();
+const translatableAttributes = ['placeholder','title','aria-label','aria-description','data-label'];
+let applyingLanguage = false;
+function localizeFeedText(value) { let text=String(value??''); if(activeLocale==='pt-BR') for(const [source,target] of Object.entries(FEED_NAME_PT_BR)) text=text.replaceAll(source,target); return text; }
+function translateSource(source) {
+  if (!source) return source;
+  const profileLabel = source.match(/^(.+) · (obrigatório|valor documentado\/editável|required|documented\/editable value)$/);
+  if (profileLabel) return `${translateSource(profileLabel[1])} · ${translateSource(profileLabel[2])}`;
+  if (activeLocale === 'pt-BR') {
+    if (Object.prototype.hasOwnProperty.call(FEED_NAME_PT_BR,source)) return FEED_NAME_PT_BR[source];
+    if (Object.prototype.hasOwnProperty.call(FEED_CATEGORY_PT_BR,source)) return FEED_CATEGORY_PT_BR[source];
+    if (Object.prototype.hasOwnProperty.call(FEED_METADATA_PT_BR,source)) return FEED_METADATA_PT_BR[source];
+    if (Object.prototype.hasOwnProperty.call(i18nEnglishToPtBr,source)) return i18nEnglishToPtBr[source];
+    return source;
+  }
+  if (Object.prototype.hasOwnProperty.call(i18nMessages, source)) return i18nMessages[source];
+  if (Object.prototype.hasOwnProperty.call(i18nExtraMessages, source)) return i18nExtraMessages[source];
+  const rules = [
+    [/^RuFaS (\d+) · sem preço documentado$/, (m,id) => 'RuFaS ' + id + ' · no documented price'],
+    [/^Remover (.+)$/, (m,name) => 'Remove ' + translateSource(name)],
+    [/^Preço de (.+)$/, (m,name) => 'Price for ' + translateSource(name)],
+    [/^Alimento (\d+)$/, (m,index) => 'Feed ' + index],
+    [/^Remover alimento (.+) da dieta anterior$/, (m,name) => 'Remove feed ' + name + ' from previous ration'],
+    [/^(\d+) alimento(s?)$/, (m,n) => n + ' ingredient' + (Number(n) === 1 ? '' : 's')],
+    [/^(\d+) selecionado(s?)$/, (m,n) => n + ' selected'],
+    [/^(\d+) viável\(eis\) · (\d+) sem solução viável$/, (m,ok,bad) => ok + ' feasible · ' + bad + ' infeasible'],
+    [/^Custo\/dia \((.+)–(.+) u\.m\.\)$/, (m,low,high) => 'Cost/day (' + low + '–' + high + ' unspecified units)'],
+    [/^Variação do preço: (.+)% → (.+)%$/, (m,low,high) => 'Price change: ' + low + '% → ' + high + '%'],
+    [/^Meta: (.+)$/, (m,value) => 'Target: ' + value],
+    [/^Margem numérica: (.+) · tolerância: (.+) · unidade interna do RuFaS$/, (m,margin,tolerance) => 'Numerical margin: ' + margin + ' · tolerance: ' + tolerance + ' · internal RuFaS unit'],
+    [/^(.+) (\d+) experiment(s)?$/, (m,label,count) => label + ' ' + count + ' experiment(s)'],
+    [/^Variação inválida: “(.+)”\.$/, (m,value) => 'Invalid variation: “' + value + '”.'],
+    [/^Análise concluída: (\d+) experimento\(s\), (\d+) viável\(eis\)\.$/, (m,total,feasible) => 'Analysis complete: ' + total + ' experiment(s), ' + feasible + ' feasible.'],
+    [/^Cenário “(.+)” carregado\. Calcule novamente para obter resultados atuais\.$/, (m,name) => 'Scenario “' + name + '” loaded. Recalculate to get current results.'],
+    [/^Cenário “(.+)” salvo neste navegador\.$/, (m,name) => 'Scenario “' + name + '” saved in this browser.'],
+    [/^Excluir o cenário “(.+)” deste navegador\?$/, (m,name) => 'Delete scenario “' + name + '” from this browser?'],
+    [/^Não é possível calcular: sem preço documentado para (.+)\.$/, (m,feeds) => 'Cannot calculate: no documented price for ' + feeds + '.'],
+    [/^Dados adicionais necessários: (.+)$/, (m,fields) => 'Additional data required: ' + fields.split(', ').map(field => i18nMessages[field] || i18nExtraMessages[field] || field).join(', ')],
+    [/^Configuração local incompatível: (.*)$/, (m,reason) => 'Local configuration is incompatible: ' + reason],
+  ];
+  for (const [pattern, replace] of rules) { const result = source.match(pattern); if (result) return replace(...result); }
+  return source;
+}
+function translateTextNode(node, refreshSource=false) {
+  const current = node.nodeValue || '';
+  let original = textOriginals.get(node);
+  if (original === undefined || (refreshSource && current !== translateSource(original))) {
+    original = current;
+    textOriginals.set(node, original);
+  }
+  const match = original.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  if (!match || !match[2]) return;
+  const localized = match[1] + translateSource(match[2]) + match[3];
+  if (node.nodeValue !== localized) { applyingLanguage = true; node.nodeValue = localized; applyingLanguage = false; }
+}
+function translateElementAttributes(element, refreshSource=false) {
+  let originals = attributeOriginals.get(element);
+  if (!originals) { originals = new Map(); attributeOriginals.set(element, originals); }
+  for (const name of translatableAttributes) {
+    if (!element.hasAttribute(name)) continue;
+    const current = element.getAttribute(name);
+    let original = originals.get(name);
+    if (original === undefined || (refreshSource && current !== translateSource(original))) { original = current; originals.set(name, original); }
+    const localized = translateSource(original);
+    if (current !== localized) { applyingLanguage = true; element.setAttribute(name, localized); applyingLanguage = false; }
+  }
+}
+function translateTree(root, refreshSource=false) {
+  if (!root) return;
+  const visit = node => {
+    if (node.nodeType === Node.TEXT_NODE) { translateTextNode(node, refreshSource); return; }
+    if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_NODE) return;
+    const element = node.nodeType === Node.ELEMENT_NODE ? node : null;
+    if (element && (element.matches('script,style,textarea,[translate="no"]') || element.closest('[translate="no"]'))) return;
+    if (element) translateElementAttributes(element, refreshSource);
+    for (const child of node.childNodes) visit(child);
+  };
+  visit(root);
+}
+function browserLanguage() {
+  const candidates = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+  const supported = candidates.map(value => String(value).toLowerCase()).find(value => value.startsWith('en') || value.startsWith('pt'));
+  return supported ? (supported.startsWith('en') ? 'en-US' : 'pt-BR') : 'pt-BR';
+}
+function setLocale(next, persist=true) {
+  if (next !== 'pt-BR' && next !== 'en-US') return;
+  translateTree(document.body, true);
+  activeLocale = next;
+  document.documentElement.lang = next;
+  document.title = translateSource('NutriPlan | Otimização de dietas');
+  const selector = document.getElementById('languagePreference');
+  if (selector) selector.value = next;
+  translateTree(document.body, false);
+  renderProfileSummary();
+  if (lastRequirementsData) renderRequirementTable(lastRequirementsData);
+  if (nativeWorkflow) { renderFeedCategories(); renderFeedMatches(); renderPreviousRation(); } else renderTable();
+  renderSavedScenarios();
+  if (currentCompositionFeedId!==null) showFeedComposition(nativeFeeds.find(feed=>feed.id===currentCompositionFeedId));
+  if (lastResult) showResults(lastResult);
+  if (lastSensitivityResult) renderSensitivityAnalysis(lastSensitivityResult);
+  if (persist) { try { localStorage.setItem(preferenceKeys.language, next); } catch (_) {} }
+}
+function themeIsDark() {
+  const theme = document.documentElement.dataset.theme || 'system';
+  return theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function updateThemeColor() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = themeIsDark() ? '#111814' : '#f7f7f2';
+}
+function setTheme(next, persist=true) {
+  const theme = ['light','dark','system'].includes(next) ? next : 'system';
+  document.documentElement.dataset.theme = theme;
+  const selector = document.getElementById('themePreference');
+  if (selector) selector.value = theme;
+  updateThemeColor();
+  if (persist) { try { localStorage.setItem(preferenceKeys.theme, theme); } catch (_) {} }
+}
+function formatDate(value) {
+  if (!value) return '';
+  const text = String(value);
+  const dateOnly = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const date = dateOnly ? new Date(Number(dateOnly[1]), Number(dateOnly[2])-1, Number(dateOnly[3])) : new Date(text);
+  return Number.isNaN(date.valueOf()) ? text : new Intl.DateTimeFormat(activeLocale, {year:'numeric',month:'short',day:'numeric'}).format(date);
+}
+function formatNumber(value, digits=2) {
+  const normalized = Number(value);
+  if (!Number.isFinite(normalized)) return String(value);
+  const rounded = Math.abs(normalized) < 0.5 * Math.pow(10, -digits) ? 0 : normalized;
+  return new Intl.NumberFormat(activeLocale, {minimumFractionDigits:digits, maximumFractionDigits:digits}).format(rounded);
+}
+function formatMoney(value, currency) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '—';
+  const rounded = Math.abs(amount) < 0.005 ? 0 : amount;
+  if (!currency) return formatNumber(rounded, 2) + (activeLocale === 'en-US' ? ' unspecified units' : ' u.m.');
+  try { return new Intl.NumberFormat(activeLocale, {style:'currency',currency}).format(rounded); }
+  catch (_) { return formatNumber(rounded,2) + ' ' + currency; }
+}
+let languageObserver;
+function initializePreferences() {
+  let savedLanguage = null, savedTheme = 'system';
+  try { savedLanguage = localStorage.getItem(preferenceKeys.language); savedTheme = localStorage.getItem(preferenceKeys.theme) || 'system'; } catch (_) {}
+  activeLocale = savedLanguage === 'en-US' || savedLanguage === 'pt-BR' ? savedLanguage : browserLanguage();
+  document.documentElement.lang = activeLocale;
+  document.title = translateSource('NutriPlan | Otimização de dietas');
+  setTheme(savedTheme, false);
+  translateTree(document.body, false);
+  const language = document.getElementById('languagePreference'), theme = document.getElementById('themePreference');
+  if (language) { language.value = activeLocale; language.addEventListener('change', () => setLocale(language.value)); }
+  if (theme) { theme.value = savedTheme; theme.addEventListener('change', () => setTheme(theme.value)); }
+  languageObserver = new MutationObserver(records => {
+    if (applyingLanguage) return;
+    for (const record of records) {
+      if (record.type === 'characterData') translateTextNode(record.target, true);
+      else if (record.type === 'attributes') translateElementAttributes(record.target, true);
+      else for (const node of record.addedNodes) translateTree(node, true);
+    }
+  });
+  languageObserver.observe(document.body, {subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:translatableAttributes});
+  const colorQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  if (colorQuery.addEventListener) colorQuery.addEventListener('change', updateThemeColor);
+  else if (colorQuery.addListener) colorQuery.addListener(updateThemeColor);
+}
+
+initializePreferences();
+if(nativeWorkflow){document.body.classList.add('native-preview','simple-ui');$('nativeInputs').classList.remove('hidden');$('previousRationSection').classList.remove('hidden');$('feedDiscovery').classList.remove('hidden');document.querySelector('.animal-card .legacy-limits:not(#nativeInputs)').classList.add('hidden');document.querySelector('.ingredient-footer .micro-note').textContent='Informe preços por kg de matéria natural.';fetch('/api/nasem-feeds').then(response=>response.json()).then(async data=>{nativeFeeds=data.feeds||[];renderFeedCategories();for(const feed of feeds){const selected=nativeFeeds.find(item=>item.id===feed.rufas_id);if(selected){feed.name=selected.name;feed.dm=selected.dry_matter_percent;}}renderTable();renderPreviousRation();renderFeedMatches();const working=readLocal(workingStorageKey,null);if(working){try{await restoreScenario(working,true);}catch(error){suspendScenarioPersistence=false;$('scenarioStatus').textContent='Configuração local incompatível: '+error.message;}}else{suspendScenarioPersistence=false;persistWorking();}
+if(simplified()){if(!$('requirementsTable').classList.contains('hidden'))$('advancedProfile').open=false;persistWorking();}}).catch(()=>{suspendScenarioPersistence=false;showError('Não foi possível carregar a biblioteca RuFaS.');});}
+else{$('scenarioManager').classList.add('hidden');$('formulationStage').innerHTML='02 <span aria-hidden="true">/</span> FORMULAÇÃO';document.body.classList.remove('simple-ui');}
 const n=v=>Number(v);
 const displayNumber=(v,d)=>{const x=Number(v);return Number.isFinite(x)&&Math.abs(x)<0.5*Math.pow(10,-d)?0:x;};
-const fmt=(v,d=2)=>displayNumber(v,d).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
-const money=v=>displayNumber(v,2).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmt=(v,d=2)=>formatNumber(displayNumber(v,d),d);
+const money=v=>formatMoney(v,nativeWorkflow?lastResult?.currency:'BRL');
+function priceTypeLabel(type){const en=activeLocale==='en-US';return ({manual:en?'Manually entered':'Informado manualmente',market_reference:en?'Market reference':'Referência de mercado',historical:en?'Historical':'Histórico',actual_cost:en?'Actual cost':'Custo real',demonstration:en?'Demonstration':'Demonstração'})[type]||type|| (en?'unclassified':'sem classificação');}
+function priceUnitLabel(unit){const en=activeLocale==='en-US';return ({kg_as_fed:en?'kg as-fed':'kg natural',kg_dm:en?'kg DM':'kg MS',metric_ton_as_fed:en?'metric ton as-fed':'tonelada natural'})[unit]||unit||'—';}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function showTab(tab){document.querySelectorAll('.tab').forEach(b=>{const selected=b.dataset.view===tab;b.classList.toggle('active',selected);if(selected)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.querySelectorAll('.view').forEach(el=>el.classList.toggle('hidden',el.id!==tab));if(window.innerWidth<851)window.scrollTo({top:0,behavior:'instant'});}
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.view)));
-let openDetails=new Set();
-const fieldLabels={name:'Ingrediente',dm:'Matéria seca',cp:'Proteína bruta',ndf:'Fibra detergente neutro',energy:'Energia',price:'Preço',min:'Mínimo',max:'Máximo',baseline:'Dieta-base',source:'Fonte do preço',source_date:'Data da cotação',composition_source:'Fonte da composição'};
-function renderTable(){
- let html='';
- feeds.forEach((f,i)=>{
-   const input=(k,type='number',step='.01')=>`<input aria-label="${esc(fieldLabels[k]||k)} de ${esc(f.name)}" name="${k}" data-i="${i}" type="${type}" ${type==='number'?`step="${step}" min="0"`:''} value="${esc(f[k]??'')}">`;
-   const expanded=openDetails.has(i);
-   html+=`<tr class="feed-row">
-     <td class="ingredient-name" data-label="Ingrediente">${input('name','text')}</td>
-     <td class="money-col" data-label="Preço (R$/kg natural)">${input('price','number','.0001')}</td>
-     <td data-label="MS (%)">${input('dm')}</td><td data-label="PB (%)">${input('cp')}</td><td data-label="FDN (%)">${input('ndf')}</td><td data-label="Energia (Mcal/kg MS)">${input('energy')}</td>
-     <td class="center forage-col" data-label="Volumoso"><input aria-label="${esc(f.name)} é volumoso" data-i="${i}" name="forage" type="checkbox" ${f.forage?'checked':''}></td>
-     <td class="action-col"><div class="table-actions"><button class="btn expander" type="button" data-expand="${i}" aria-expanded="${expanded}" aria-controls="feed-detail-${i}">Limites e fonte</button><button class="remove" type="button" data-remove="${i}" aria-label="Remover ${esc(f.name)}">Excluir</button></div></td>
-   </tr><tr id="feed-detail-${i}" class="feed-detail-row ${expanded?'':'hidden'}"><td colspan="8"><div class="feed-detail">
-    <p class="feed-detail-summary">Defina limites em kg de matéria seca por dia e registre a referência do preço.</p>
-    <div class="field"><label>Mín. kg MS</label>${input('min')}</div><div class="field"><label>Máx. kg MS</label>${input('max')}</div><div class="field"><label>Dieta-base kg MS</label>${input('baseline')}</div>
-    <div class="field source-field"><label>Fonte do preço</label>${input('source','text')}</div><div class="field date-field"><label>Data da fonte</label>${input('source_date','date')}</div><div class="field source-field"><label>Fonte da composição</label>${input('composition_source','text')}</div>
-   </div></td></tr>`;
- });
- $('feedRows').innerHTML=html;
- $('feedCount').textContent=`${feeds.length} alimento${feeds.length===1?'':'s'}`;
+function renderFeedCategories(){const select=$('feedCategory');if(!select)return;const selected=select.value,categories=[...new Set(nativeFeeds.map(feed=>feed.category))].sort();select.innerHTML='<option value="">'+(activeLocale==='en-US'?'All':'Todas')+'</option>'+categories.map(category=>'<option value="'+esc(category)+'">'+esc(translateSource(category))+'</option>').join('');if(categories.includes(selected))select.value=selected;}
+function visibleNativeFeeds(){const query=$('feedSearch').value.trim().toLocaleLowerCase(activeLocale),category=$('feedCategory').value,selectedOnly=$('selectedFeedsOnly').checked;return nativeFeeds.filter(feed=>(!category||feed.category===category)&&(!selectedOnly||feeds.some(item=>String(item.rufas_id)===String(feed.id)))&&(!query||translateFeedName(feed.name).toLocaleLowerCase(activeLocale).includes(query)));}
+function simplified(){return document.body.classList.contains('simple-ui');}
+// The checkbox list is the only selection surface; feeds remains the optimizer/scenario payload.
+function renderFeedPicker(matches){
+ if(!simplified()||!nativeFeeds.length)return;
+ const list=Array.isArray(matches)?matches:visibleNativeFeeds();
+ $('feedPicker').setAttribute('aria-label',activeLocale==='en-US'?'Available ingredients':'Ingredientes disponíveis');
+ $('feedPicker').innerHTML=list.map(feed=>{
+  const selected=feeds.some(item=>String(item.rufas_id)===String(feed.id));
+  const name=translateFeedName(feed.name);
+  return '<label class="feed-option'+(selected?' is-selected':'')+'"><input type="checkbox" data-picker-id="'+esc(feed.id)+'" '+(selected?'checked':'')+' aria-label="'+esc(name)+'"><span class="feed-option-name">'+esc(name)+'</span></label>';
+ }).join('')||'<p class="feed-empty">'+(activeLocale==='en-US'?'No ingredients match these filters.':'Nenhum ingrediente corresponde aos filtros atuais.')+'</p>';
 }
-$('feedRows').addEventListener('input',ev=>{const t=ev.target;if(t.matches('[data-i][name]')){const i=Number(t.dataset.i); feeds[i][t.name]=t.type==='checkbox'?t.checked:(t.type==='number'?t.value:t.value);}});
-$('feedRows').addEventListener('change',ev=>{const t=ev.target;if(t.type==='checkbox'&&t.dataset.i!==undefined)feeds[Number(t.dataset.i)].forage=t.checked;});
-$('feedRows').addEventListener('click',ev=>{const expand=ev.target.closest('[data-expand]');if(expand){const i=Number(expand.dataset.expand);if(openDetails.has(i))openDetails.delete(i);else openDetails.add(i);const row=$('feed-detail-'+i);row.classList.toggle('hidden',!openDetails.has(i));expand.setAttribute('aria-expanded',String(openDetails.has(i)));return;}const t=ev.target.closest('[data-remove]');if(!t)return;if(feeds.length<=2){alert('Mantenha pelo menos dois alimentos.');return;}const index=Number(t.dataset.remove);feeds.splice(index,1);openDetails=new Set([...openDetails].filter(i=>i!==index).map(i=>i>index?i-1:i));renderTable();});
-$('addFeed').addEventListener('click',()=>{if(feeds.length>=25)return alert('Máximo de 25 ingredientes.');feeds.push({name:'Novo ingrediente',dm:88,cp:10,ndf:30,energy:1.5,price:1,min:0,max:10,baseline:0,forage:false,source:'Informe a fonte',source_date:'',composition_source:''});renderTable();});
-$('reset').addEventListener('click',()=>{if(!confirm('Restaurar os dados de exemplo?'))return;feeds=structuredClone(initialFeeds);openDetails.clear();renderTable();$('errorBox').classList.add('hidden');});
+function renderFeedMatches(){if(!nativeWorkflow)return;const matches=visibleNativeFeeds();$('feedMatches').textContent=activeLocale==='en-US'?matches.length+' ingredients found.':matches.length+' ingredientes encontrados.';renderTable();}
+function showFeedComposition(feed){if(!feed){currentCompositionFeedId=null;$('feedComposition').textContent='Foque ou selecione um alimento para consultar sua composição.';return;}currentCompositionFeedId=feed.id;const values=[['Matéria seca',feed.dry_matter_percent,'% natural'],['Proteína bruta',feed.crude_protein_percent_dm,'% MS'],['FDN',feed.ndf_percent_dm,'% MS'],['Amido',feed.starch_percent_dm,'% MS'],['Gordura',feed.fat_percent_dm,'% MS']];$('feedComposition').innerHTML=`<strong>${esc(translateFeedName(feed.name))} <small>RuFaS ${esc(feed.id)} · ${esc(translateSource(feed.category))}</small></strong><div class="composition-metrics">${values.map(([label,value,unit])=>`<span><b>${esc(label)}</b>${value===null||value===undefined?'—':fmt(value,1)+' '+esc(activeLocale==='en-US'?({'% natural':'% as-fed','% MS':'% DM'}[unit]||unit):unit)}</span>`).join('')}</div><small>${activeLocale==='en-US'?'Composition:':'Composição:'} ${esc(feed.composition_source)}</small>`;}
+$('feedSearch').addEventListener('input',renderFeedMatches);
+$('selectedFeedsOnly').addEventListener('change',renderFeedMatches);
+$('feedCategory').addEventListener('change',renderFeedMatches);
+$('feedPicker').addEventListener('focusin',event=>{const input=event.target.closest('[data-picker-id]');if(!input)return;const feed=nativeFeeds.find(item=>String(item.id)===String(input.dataset.pickerId));if(feed)showFeedComposition(feed);});
+$('feedPicker').addEventListener('change',event=>{
+ const target=event.target;if(target.dataset.pickerId===undefined)return;
+ const feed=nativeFeeds.find(item=>String(item.id)===String(target.dataset.pickerId));
+ if(!feed)return;
+ showFeedComposition(feed);
+ const index=feeds.findIndex(item=>String(item.rufas_id)===String(feed.id));
+ if(target.checked){
+  if(index>=0){target.checked=true;return;}
+  if(feeds.length>=25){target.checked=false;showError('Máximo de 25 ingredientes.');return;}
+  invalidateResult();
+  feeds.push({rufas_id:feed.id,name:feed.name,dm:feed.dry_matter_percent,cp:'',ndf:'',energy:'',price:'',min:0,max:10,baseline:0,forage:false,source:'',source_date:'',currency:'',price_unit:'kg_as_fed',source_type:'manual'});
+  renderTable();
+ }else{
+  if(index<0){target.checked=false;return;}
+  invalidateResult();
+  feeds.splice(index,1);
+  renderTable();
+ }
+});
+function markEditedPrice(feed){
+ feed.currency='';
+ feed.price_unit='kg_as_fed';
+ feed.source_type='demonstration';
+ feed.source='Valor informado na interface';
+ feed.source_date='';
+ feed.geography='';
+ feed.price_notes='';
+}
+function renderTable(){
+ $('feedRows').innerHTML=feeds.map((feed,index)=>`<tr class="feed-row">
+  <td class="ingredient-name" data-label="${activeLocale==='en-US'?'Ingredient':'Ingrediente'}">${nativeWorkflow?`<span>${esc(translateFeedName(feed.name))}</span>`:`<input aria-label="${esc(activeLocale==='en-US'?'Ingredient':'Ingrediente')} ${index+1}" name="name" data-i="${index}" type="text" value="${esc(feed.name)}">`}</td>
+  <td class="money-col" data-label="${activeLocale==='en-US'?'Price value':'Valor do preço'}"><input aria-label="${activeLocale==='en-US'?'Price for':'Preço de'} ${esc(translateFeedName(feed.name))}" name="price" data-i="${index}" type="number" step=".0001" min="0" value="${esc(feed.price??'')}"></td>
+  <td class="action-col" data-label="${activeLocale==='en-US'?'Action':'Ação'}"><button class="remove" type="button" data-remove="${index}" aria-label="${activeLocale==='en-US'?'Remove':'Remover'} ${esc(translateFeedName(feed.name))}">${activeLocale==='en-US'?'Remove':'Excluir'}</button></td>
+ </tr>`).join('');
+ $('selectedFeedCount').textContent=activeLocale==='en-US'?feeds.length+' selected':feeds.length+' selecionados';
+ if(currentCompositionFeedId!==null&&!feeds.some(feed=>String(feed.rufas_id)===String(currentCompositionFeedId)))showFeedComposition(null);
+ if(simplified())renderFeedPicker();
+}
+function renderPreviousRation(){
+ $('previousRationRows').innerHTML=previousRation.map((item,index)=>`<div class="previous-feed-row"><div class="field"><label for="previousFeed-${index}">${translateSource('Alimento')} ${index+1}</label><select class="input" id="previousFeed-${index}" data-previous-id="${index}"><option value="">${translateSource('Selecione um alimento')}</option>${nativeFeeds.map(feed=>`<option value="${feed.id}" ${String(item.rufas_id||'')===String(feed.id)?'selected':''}>${esc(translateFeedName(feed.name))} (${feed.id})</option>`).join('')}</select></div><div class="field"><label for="previousAmount-${index}">${translateSource('Quantidade (kg MS/dia)')}</label><input class="input" id="previousAmount-${index}" data-previous-amount="${index}" type="number" min="0" step="any" value="${esc(item.kg_dm_day??'')}"></div><button class="remove" type="button" data-remove-previous="${index}" aria-label="${activeLocale==='en-US'?'Remove feed '+(index+1)+' from current ration':'Remover alimento '+(index+1)+' da dieta atual'}">${activeLocale==='en-US'?'Remove':'Excluir'}</button></div>`).join('');
+}
+
+function previousRationPayload(strict=true){
+ if(!previousRation.length){if(strict)throw Error('Informe a dieta atual do lote ou os dados avançados de emissões.');return null;}
+ if(previousRation.length<2)throw Error('Informe pelo menos dois alimentos da dieta anterior.');
+ const values=previousRation.map(raw=>{const item={...raw,rufas_id:Number(raw.rufas_id),kg_dm_day:Number(raw.kg_dm_day)};if(item.price_record){delete item.price_as_fed;return item;}if(raw.price_as_fed!==undefined&&raw.price_as_fed!==''){const amount=Number(raw.price_as_fed),unit=raw.price_unit||'kg_as_fed',sourceType=raw.price_source_type||'manual';if(sourceType==='demonstration'||(raw.price_currency&&raw.price_source&&raw.price_date)){item.price_record={amount,currency:raw.price_currency||null,unit,source_type:sourceType,source:raw.price_source||'',reference_date:raw.price_date||null,geography:raw.price_geography||''};delete item.price_as_fed;}else if(unit==='kg_as_fed')item.price_as_fed=amount;else delete item.price_as_fed;}else if(importedPrices.has(item.rufas_id)){item.price_record=importedPrices.get(item.rufas_id);delete item.price_as_fed;}return item;});
+ if(values.some(item=>!item.rufas_id||!nativeFeeds.some(feed=>feed.id===item.rufas_id)||!Number.isFinite(item.kg_dm_day)||item.kg_dm_day<=0))throw Error('Revise os alimentos e as quantidades da dieta anterior em kg de matéria seca por dia.');
+ if(new Set(values.map(item=>item.rufas_id)).size!==values.length)throw Error('A dieta anterior contém alimentos repetidos.');
+ const source=$('previousRationSource').value.trim();
+ return source?{previous_ration:values,previous_ration_source:source}:{previous_ration:values};
+}
+$('addPreviousFeed').addEventListener('click',()=>{if(previousRation.length>=25)return alert('Máximo de 25 alimentos.');previousRation.push({rufas_id:'',kg_dm_day:''});renderPreviousRation();invalidateResult();});
+$('previousRationRows').addEventListener('input',event=>{const input=event.target;if(!input.matches('[data-previous-amount]'))return;previousRation[Number(input.dataset.previousAmount)].kg_dm_day=input.value;invalidateResult();});
+$('previousRationRows').addEventListener('change',event=>{const input=event.target;if(!input.matches('[data-previous-id]'))return;previousRation[Number(input.dataset.previousId)].rufas_id=Number(input.value)||'';invalidateResult();});
+$('previousRationRows').addEventListener('click',event=>{const button=event.target.closest('[data-remove-previous]');if(!button)return;previousRation.splice(Number(button.dataset.removePrevious),1);renderPreviousRation();invalidateResult();});
+$('feedRows').addEventListener('input',event=>{const input=event.target;if(!input.matches('[data-i][name]'))return;const feed=feeds[Number(input.dataset.i)];feed[input.name]=input.value;if(input.name==='price'&&nativeWorkflow)markEditedPrice(feed);invalidateResult();});
+$('feedRows').addEventListener('click',event=>{const button=event.target.closest('[data-remove]');if(!button)return;if(feeds.length<=2){alert('Mantenha pelo menos dois alimentos.');return;}feeds.splice(Number(button.dataset.remove),1);invalidateResult();renderTable();});
+$('addFeed').addEventListener('click',()=>{if(feeds.length>=25)return alert('Máximo de 25 ingredientes.');invalidateResult();feeds.push({name:'Novo ingrediente',dm:88,cp:10,ndf:30,energy:1.5,price:1,min:0,max:10,baseline:0,forage:false,source:'Informe a fonte',source_date:'',composition_source:'',currency:'',price_unit:'kg_as_fed',source_type:'manual'});renderTable();});
+$('reset').addEventListener('click',()=>{if(!confirm(translateSource('Limpar a configuração atual?')))return;invalidateResult();feeds=[];importedPrices=new Map();previousRation=[];$('previousRationSource').value='';renderPreviousRation();$('category').value='first_lactation_cow';$('lactationPhase').value='';$('weight').value='';for(const input of profileInputs())input.value='';$('pregnant').checked=false;syncPregnancyField();$('nativeMethane').value='';$('nativeUrineNitrogen').value='';$('nativeEmissionSource').value='';updateRequirements();renderTable();$('errorBox').classList.add('hidden');persistWorking();});
 function scenario(){let animal={category:$('category').value,weight:n($('weight').value),milk:n($('milk').value),dmi:n($('dmi').value),energy_min:n($('energy_min').value),cp_min:n($('cp_min').value),ndf_min:n($('ndf_min').value),ndf_max:n($('ndf_max').value),forage_min:n($('forage_min').value)};return{animal,feeds:feeds.map(f=>({...f,dm:n(f.dm),cp:n(f.cp),ndf:n(f.ndf),energy:n(f.energy),price:n(f.price),min:n(f.min),max:n(f.max)})),baseline:feeds.map(f=>n(f.baseline)),metadata:{model:'Didático linear; não é resultado RuFaS',price_units:'R$/kg matéria natural',nutrients:'Composição ilustrativa - validar',exported_at:new Date().toISOString()}};}
-function download(name,content,type){let blob=new Blob([content],{type:type||'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);}
-$('exportConfig').addEventListener('click',()=>download('cenario-dieta-didatica.json',JSON.stringify(scenario(),null,2)));
-$('run').addEventListener('click',async()=>{const btn=$('run');btn.disabled=true;btn.textContent='Calculando…';$('errorBox').classList.add('hidden');try{const resp=await fetch('/api/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(scenario())});const res=await resp.json();if(!resp.ok||!res.ok)throw Error(res.error||res.message||'Não foi possível otimizar.');lastResult=res;showResults(res);showTab('results');}catch(err){$('errorBox').textContent=err.message;$('errorBox').classList.remove('hidden');showTab('setup');}finally{btn.disabled=false;btn.innerHTML='Calcular dieta de menor custo <span aria-hidden="true">→</span>';}});
-function showResults(r){$('resultEmpty').classList.add('hidden');$('resultContent').classList.remove('hidden');$('engine').textContent=r.engine+' · resultados para fins acadêmicos';$('costDay').textContent=money(r.cost_day);$('costMonth').textContent=money(r.cost_month);$('rDmi').textContent=fmt(r.dmi,1);$('saving').textContent=r.saving_percent===null?'—':fmt(r.saving_percent,1)+'%';$('savingLabel').textContent=r.baseline_cost===null?r.baseline_status:'Base: '+money(r.baseline_cost)+'/dia';
-$('bars').innerHTML=r.ingredients.map(f=>`<div class="bar-line"><span>${esc(f.name)}</span><div class="bar-shell"><div class="bar-fill" style="width:${Math.max(0,Math.min(100,f.percent_dm))}%"></div></div><span class="bar-val">${fmt(f.percent_dm,1)}%</span></div>`).join('');
-$('resultRows').innerHTML=r.ingredients.map(f=>`<tr><td>${esc(f.name)}</td><td>${fmt(f.kg_dm,3)}</td><td>${fmt(f.kg_natural,3)}</td><td>${money(f.cost)}</td></tr>`).join('');
-const m=r.metrics,t=r.targets,lines=[['Proteína bruta',m.cp_pct,'≥ '+fmt(t.cp_pct)+'%',m.cp_pct>=t.cp_pct-0.0001,'%'],['FDN',m.ndf_pct,fmt(t.ndf_min)+' a '+fmt(t.ndf_max)+'%',m.ndf_pct>=t.ndf_min-.0001&&m.ndf_pct<=t.ndf_max+.0001,'%'],['Energia',m.energy,'≥ '+fmt(t.energy)+' Mcal',m.energy>=t.energy-.0001,' Mcal'],['Volumosos',m.forage_pct,'≥ '+fmt(t.forage_pct)+'%',m.forage_pct>=t.forage_pct-.0001,'%']];$('checks').innerHTML=lines.map(z=>`<div class="test"><div><b>${esc(z[0])}</b><small>Meta: ${esc(z[2])}</small></div><strong class="${z[3]?'ok':'error'}">${fmt(z[1])}${z[4]}</strong></div>`).join('');}
-$('downloadCsv').addEventListener('click',()=>{if(!lastResult)return;let rows=[['Ingrediente','kg MS/dia','kg natural/dia','Custo R$/dia','Fonte','Data'],...lastResult.ingredients.map(f=>[f.name,f.kg_dm,f.kg_natural,f.cost,f.source,f.source_date])];let csv='\ufeff'+rows.map(r=>r.map(cell=>'"'+String(cell??'').replaceAll('"','""')+'"').join(';')).join('\r\n');download('resultado-dieta.csv',csv,'text/csv;charset=utf-8');});
-$('nativeSchema').addEventListener('click',()=>{let sample={nutrient_standard:'NRC',animal_combination:'lac_cow',body_weight:600,dmi_initial:20,protein_initial:1800,requirements:{_INSTRUCOES:'Preencha todos os campos reais de NutritionRequirements, incluindo essential_amino_acids'},feeds:[{_INSTRUCOES:'Preencha todos os campos reais de Feed da biblioteca RuFaS; purchase_cost em unidade monetária/kg MS'}]};download('MODELO-ADAPTADOR-RUFAS-INCOMPLETO.json',JSON.stringify(sample,null,2));});
-$('runNative').addEventListener('click',async()=>{const box=$('nativeOutput'),file=$('nativeJson').files[0];if(!file){box.textContent='Selecione um JSON com dados completos de Feed e NutritionRequirements.';return;}try{let data=JSON.parse(await file.text());box.textContent='Executando motor nativo…';const req=await fetch('/api/rufas-native',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});let result=await req.json();if(!req.ok||!result.ok){box.textContent=result.error||result.message||'Não foi encontrada solução.';return;}box.innerHTML=`<h3>Resultado · ${esc(result.engine)}</h3><p>Custo diário por animal: <strong>${fmt(result.cost_day)} unidade monetária</strong> · 30 dias: ${fmt(result.cost_month)} · MS: ${fmt(result.dmi,3)} kg/dia</p><div class="tablewrap"><table class="table"><thead><tr><th>Ingrediente</th><th>kg MS/dia</th><th>kg natural/dia</th><th>% da MS</th><th>Custo/dia</th></tr></thead><tbody>${result.ingredients.map(f=>`<tr><td>${esc(f.name)}</td><td>${fmt(f.kg_dm,3)}</td><td>${fmt(f.kg_natural,3)}</td><td>${fmt(f.percent_dm,2)}%</td><td>${fmt(f.cost,2)}</td></tr>`).join('')}</tbody></table></div><h3>Restrições RuFaS</h3>${result.constraints.map(c=>`<div class="test"><span>${esc(c.name)}</span><strong class="${c.satisfied?'ok':'error'}">${c.satisfied?'Atendida':'Não atendida'} · folga ${fmt(c.slack,4)}</strong></div>`).join('')}<p>${esc(result.message)}</p>`;}catch(err){box.textContent='Erro: '+err.message;}});
+function nativeScenario(){
+ if(!$('lactationPhase').value)throw Error('Selecione uma fase da lactação.');
+ if($('pregnant').checked&&!$('profile-day_of_pregnancy').value)throw Error('Informe o dia de gestação ou desmarque Gestante.');
+ const parameters=collectProfileParameters(),selected=feeds.filter(feed=>feed.available!==false);
+ if(selected.length<2||selected.some(feed=>!feed.rufas_id))throw Error('Selecione pelo menos dois alimentos RuFaS NASEM disponíveis.');
+ if(new Set(selected.map(feed=>feed.rufas_id)).size!==selected.length)throw Error('Os alimentos disponíveis não podem repetir o mesmo ID RuFaS.');
+ if(selected.some(feed=>feed.source_type!=='demonstration'&&(!feed.currency||!feed.source_date)))throw Error('Informe moeda, data e fonte dos preços não demonstrativos.');
+ const payload={animal_category:$('category').value,body_weight_kg:n($('weight').value),parameters,feeds:selected.map(feed=>({rufas_id:Number(feed.rufas_id),price_record:{amount:n(feed.price),currency:feed.currency||null,unit:feed.price_unit||'kg_as_fed',source_type:feed.source_type||'manual',source:feed.source,reference_date:feed.source_date||null,geography:feed.geography||'',notes:feed.price_notes||''},minimum_kg_dm:n(feed.min),maximum_kg_dm:n(feed.max),available:true}))};
+ const previous=previousRationPayload(false);
+ if(previous)Object.assign(payload,previous);
+ else{
+  const methane=$('nativeMethane').value,urine=$('nativeUrineNitrogen').value,source=$('nativeEmissionSource').value.trim();
+  const hasMethane=methane!=='',hasUrine=urine!=='';
+  if(hasMethane!==hasUrine)throw Error('Informe ambos os valores de emissão ou deixe os dois vazios para usar os cálculos nativos na dieta candidata.');
+  if(hasMethane&&!source)throw Error('Informe a fonte dos valores de emissões.');
+  if(hasMethane)Object.assign(payload,{enteric_methane_g_day:n(methane),urine_nitrogen_kg_day:n(urine),emission_source:source});
+ }
+ return payload;
+}
+const scenarioStorageKey='nutriplan.scenarios.v1',workingStorageKey='nutriplan.working.v1';
+let rufasCommit=null,feedLibraryHash=null;
+fetch('/api/health').then(response=>response.json()).then(data=>{rufasCommit=data.rufas_commit||null;feedLibraryHash=data.feed_library_sha256||null;}).catch(()=>{});
+let storageAvailable=true,suspendScenarioPersistence=nativeWorkflow,lastSavedFingerprint=null;
+function readLocal(key,fallback){try{const value=localStorage.getItem(key);return value?JSON.parse(value):fallback;}catch(error){storageAvailable=false;return fallback;}}
+function writeLocal(key,value){try{localStorage.setItem(key,JSON.stringify(value));storageAvailable=true;return true;}catch(error){storageAvailable=false;$('scenarioStatus').textContent='Armazenamento local indisponível. O cenário não foi salvo neste navegador.';return false;}}
+function currentConfiguration(){const parameters=collectProfileParameters();return{animal_category:$('category').value,lactation_subcategory:$('lactationPhase').value,body_weight_kg:$('weight').value,parameters,previous_ration:structuredClone(previousRation),previous_ration_source:$('previousRationSource').value,emissions:{enteric_methane_g_day:$('nativeMethane').value,urine_nitrogen_kg_day:$('nativeUrineNitrogen').value,emission_source:$('nativeEmissionSource').value},feeds:feeds.map(feed=>({rufas_id:feed.rufas_id,available:feed.available!==false,min:feed.min,max:feed.max,price:feed.price,currency:feed.currency,price_unit:feed.price_unit,source_type:feed.source_type,source:feed.source,source_date:feed.source_date,geography:feed.geography||'',price_notes:feed.price_notes||''})),imported_prices:[...importedPrices.values()]};}
+function makeScenario(name,description='',id=crypto.randomUUID(),createdAt=new Date().toISOString()){return{schema_version:1,app_id:'nutriplan',id,name,description,created_at:createdAt,modified_at:new Date().toISOString(),metadata:{nutriplan_version:null,rufas_version:null,rufas_commit:rufasCommit,feed_library_sha256:feedLibraryHash,nutritional_standard:'NASEM_2021',engine:'RuFaS RationOptimizer',feed_library:'input/data/feed/NASEM_Comp_with_TDN.csv'},configuration:currentConfiguration()};}
+async function checkScenario(document,allowIncomplete=false){const response=await fetch('/api/scenarios/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(allowIncomplete?{scenario:document,allow_incomplete:true}:document)});const data=await response.json();if(!response.ok)throw Error(data.error||'Cenário incompatível.');return data.scenario;}
+function savedScenarios(){const saved=readLocal(scenarioStorageKey,[]);return Array.isArray(saved)?saved:[];}
+function renderSavedScenarios(){const saved=savedScenarios();$('savedScenarios').innerHTML=saved.length?saved.map(item=>`<div class="saved-scenario"><div><strong>${esc(item.name)}</strong><small>${esc(item.description||'Sem descrição')} · ${esc(formatDate(item.modified_at))}</small></div><div class="scenario-actions"><button class="btn sm" type="button" data-scenario-action="load" data-scenario-id="${esc(item.id)}">Carregar</button><button class="btn sm" type="button" data-scenario-action="rename" data-scenario-id="${esc(item.id)}">Renomear</button><button class="btn sm" type="button" data-scenario-action="delete" data-scenario-id="${esc(item.id)}">Excluir</button></div></div>`).join(''):'<p>Nenhum cenário salvo neste navegador.</p>';}
+function persistWorking(){if(!nativeWorkflow||suspendScenarioPersistence)return;writeLocal(workingStorageKey,makeScenario($('scenarioName').value.trim()||'Em edição',$('scenarioDescription').value.trim(), 'working'));}
+function scheduleWorkingSave(){if(!nativeWorkflow||suspendScenarioPersistence)return;setTimeout(persistWorking,0);}
+async function restoreScenario(document,allowIncomplete=false){const valid=await checkScenario(document,allowIncomplete);suspendScenarioPersistence=true;invalidateResult();try{const config=valid.configuration;$('category').value=config.animal_category;$('lactationPhase').value=lactationPhases.includes(config.lactation_subcategory)?config.lactation_subcategory:'';$('weight').value=config.body_weight_kg??'';feeds=config.feeds.map(item=>{const feed=nativeFeeds.find(entry=>entry.id===Number(item.rufas_id));return{...item,name:feed?.name||'',dm:feed?.dry_matter_percent||'',cp:feed?.crude_protein_percent_dm||'',ndf:feed?.ndf_percent_dm||'',energy:'',forage:false,baseline:0};});previousRation=structuredClone(config.previous_ration||[]);importedPrices=new Map((config.imported_prices||[]).map(item=>[Number(item.rufas_id),item]));$('previousRationSource').value=config.previous_ration_source||'';const emissions=config.emissions||{};$('nativeMethane').value=emissions.enteric_methane_g_day??'';$('nativeUrineNitrogen').value=emissions.urine_nitrogen_kg_day??'';$('nativeEmissionSource').value=emissions.emission_source||'';$('advancedFields').innerHTML='';$('advancedFields').dataset.ready='';renderAdvancedProfileFields();renderPreviousRation();renderTable();await updateRequirements(config.parameters||{});$('scenarioName').value=valid.name;$('scenarioDescription').value=valid.description||'';lastSavedFingerprint=currentFingerprint();$('scenarioStatus').textContent=`Cenário “${valid.name}” carregado. Calcule novamente para obter resultados atuais.`;}finally{suspendScenarioPersistence=false;persistWorking();}}
+function currentFingerprint(){return JSON.stringify({name:$('scenarioName').value,description:$('scenarioDescription').value,configuration:currentConfiguration()});}
+function hasUnsavedChanges(){return lastSavedFingerprint!==null&&currentFingerprint()!==lastSavedFingerprint;}
+$('scenarioName').addEventListener('input',scheduleWorkingSave);
+$('scenarioDescription').addEventListener('input',scheduleWorkingSave);
+$('saveScenario').addEventListener('click',async()=>{try{const name=$('scenarioName').value.trim(),saved=savedScenarios();if(!$('lactationPhase').value)throw Error('Selecione uma fase da lactação.');if(saved.some(item=>item.name.toLocaleLowerCase(activeLocale)===name.toLocaleLowerCase(activeLocale)))throw Error('Já existe um cenário com esse nome. Escolha outro nome ou renomeie o existente.');const document=await checkScenario(makeScenario(name,$('scenarioDescription').value.trim()));if(writeLocal(scenarioStorageKey,[...saved,document])){lastSavedFingerprint=currentFingerprint();renderSavedScenarios();$('scenarioStatus').textContent=`Cenário “${name}” salvo neste navegador.`;}}catch(error){$('scenarioStatus').textContent=error.message;}});
+$('savedScenarios').addEventListener('click',async event=>{const button=event.target.closest('[data-scenario-action]');if(!button)return;const saved=savedScenarios(),item=saved.find(row=>row.id===button.dataset.scenarioId);if(!item)return;try{const action=button.dataset.scenarioAction;if(action==='load'){if(hasUnsavedChanges()&&!confirm('Descartar alterações não salvas no cenário atual?'))return;await restoreScenario(item);}else if(action==='rename'){const name=prompt('Novo nome do cenário:',item.name)?.trim();if(!name)return;if(saved.some(row=>row.id!==item.id&&row.name.toLocaleLowerCase(activeLocale)===name.toLocaleLowerCase(activeLocale)))throw Error('Já existe um cenário com esse nome.');item.name=name;item.modified_at=new Date().toISOString();await checkScenario(item);writeLocal(scenarioStorageKey,saved);renderSavedScenarios();}else if(action==='delete'){if(!confirm(`Excluir o cenário “${item.name}” deste navegador?`))return;writeLocal(scenarioStorageKey,saved.filter(row=>row.id!==item.id));renderSavedScenarios();$('scenarioStatus').textContent='Cenário excluído.';}}catch(error){$('scenarioStatus').textContent=error.message;}});
+renderSavedScenarios();
+// ---- Sensitivity analysis ----
+let sensitivityVersion=0,sensitivityRequest=null,sensitivityResult=null;
+function invalidateSensitivity(){sensitivityVersion++;if(sensitivityRequest){sensitivityRequest.abort();sensitivityRequest=null;$('runSensitivity').disabled=false;}sensitivityResult=null;$('sensitivityOutput').classList.add('hidden');$('sensitivityOutput').innerHTML='';}
+function refreshSensitivityControls(){const mode=$('sensitivityMode').value,isComparison=mode==='scenario_comparison';$('sensitivityPricesField').classList.toggle('hidden',mode!=='price_sensitivity');$('sensitivityFeedField').classList.toggle('hidden',isComparison);$('sensitivityAvailabilityFields').classList.toggle('hidden',mode!=='availability_sensitivity');$('sensitivityScenarioPick').classList.toggle('hidden',!isComparison);if(!isComparison){const current=$('sensitivityFeed').value,options=feeds.map(feed=>({value:feed.rufas_id||'',label:feed.rufas_id?`${translateFeedName(feed.name||'Sem nome')} (ID ${feed.rufas_id})`:'—'}));$('sensitivityFeed').innerHTML=options.map(option=>`<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')||'<option value="">—</option>';if(current&&options.some(option=>String(option.value)===current))$('sensitivityFeed').value=current;}else{const saved=savedScenarios();$('sensitivityScenarioList').innerHTML=saved.length?saved.map(item=>`<div class="field"><label><input type="checkbox" data-scenario-id="${esc(item.id)}" data-scenario-name="${esc(item.name)}"> ${esc(item.name)}</label><small>${esc(formatDate(item.modified_at))}</small></div>`).join(''):'<p>Nenhum cenário salvo. Salve cenários para comparar.</p>';}}
+$('sensitivityMode').addEventListener('change',refreshSensitivityControls);
+document.addEventListener('change',event=>{if(!(event.target instanceof Element)||!event.target.closest('#sensitivityManager'))refreshSensitivityControls();});
+$('sensitivityManager').addEventListener('toggle',()=>{if($('sensitivityManager').open)refreshSensitivityControls();});
+function parseSensitivityVariations(text){const parts=String(text||'').split(/[,;\s]+/).filter(Boolean);if(!parts.length)throw Error('Informe ao menos uma variação de preço.');const values=parts.map(part=>{const value=n(part);if(!Number.isFinite(value))throw Error(`Variação inválida: “${part}”.`);if(value<=-100)throw Error('A variação deve ser maior que -100% para manter preço positivo.');if(Math.abs(value)>1000)throw Error('Variação excede o limite de 1000%.');return value;});if(values.length>9)throw Error('Máximo de 9 variações de preço por análise.');if(new Set(values).size!==values.length)throw Error('Variações repetidas devem ser removidas.');return values;}
+function buildAvailabilityVariations(){const out=[];if($('sensitivityBaseline').checked)out.push({type:'baseline'});const min=$('sensitivityMinKg').value.trim(),max=$('sensitivityMaxKg').value.trim();if(min!==''||max!==''){const bound={type:'bound'};if(min!==''){const value=n(min);if(!Number.isFinite(value)||value<0)throw Error('Novo mínimo deve ser número não negativo (kg MS/dia).');bound.minimum_kg_dm=value;}if(max!==''){const value=n(max);if(!Number.isFinite(value)||value<0)throw Error('Novo máximo deve ser número não negativo (kg MS/dia).');bound.maximum_kg_dm=value;}out.push(bound);}if($('sensitivityExclude').checked)out.push({type:'exclude'});if(!out.length)throw Error('Marque o caso-base, um limite novo ou a exclusão.');if(out.length>5)throw Error('Máximo de 5 experimentos de disponibilidade.');return out;}
+async function runSensitivityAnalysis(){const mode=$('sensitivityMode').value,request={mode};try{if(mode==='scenario_comparison'){const picked=document.querySelectorAll('#sensitivityScenarioList input[data-scenario-id]:checked');if(picked.length<2||picked.length>4)throw Error('Selecione de 2 a 4 cenários salvos para comparar.');const saved=savedScenarios();request.scenarios=[...picked].map(input=>structuredClone(saved.find(item=>item.id===input.dataset.scenarioId)));}else{const feedId=n($('sensitivityFeed').value);if(!feedId)throw Error('Selecione o ingrediente do experimento.');const reference=await checkScenario(makeScenario($('scenarioName').value.trim()||'Em edição',$('scenarioDescription').value.trim()));request.scenario=reference;if(mode==='price_sensitivity'){request.rufas_id=feedId;request.variations=parseSensitivityVariations($('sensitivityPrices').value);}else{request.rufas_id=feedId;request.variations=buildAvailabilityVariations();}}}catch(error){$('sensitivityStatus').textContent=error.message;return;}
+const version=++sensitivityVersion,button=$('runSensitivity');button.disabled=true;$('sensitivityStatus').textContent='Executando o pipeline nativo RuFaS…';try{const controller=new AbortController();sensitivityRequest=controller;const response=await fetch('/api/sensitivity-analysis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request),signal:controller.signal});const data=await response.json();if(version!==sensitivityVersion)return;if(!response.ok)throw Error(data.error||'Análise rejeitada pelo servidor.');sensitivityResult=data;renderSensitivityAnalysis(data);$('sensitivityStatus').textContent=`Análise concluída: ${data.summary.total} experimento(s), ${data.summary.feasible} viável(eis).`;}catch(err){if(version!==sensitivityVersion||err.name==='AbortError')return;$('sensitivityOutput').classList.add('hidden');$('sensitivityStatus').textContent=err.message;}finally{if(version===sensitivityVersion){sensitivityRequest=null;button.disabled=false;}}}
+$('runSensitivity').addEventListener('click',runSensitivityAnalysis);
+function boundsText(minimum,maximum,suffix=' kg MS/dia'){const low=minimum??0,high=maximum;return `${fmt(low,3)}–${high===null||high===undefined?'—':fmt(high,3)}${suffix}`;}
+function sensitivityText(pt,en){return activeLocale==='en-US'?en:pt;}
+function sensitivityValues(experiment){const modification=experiment.modification||{};if(modification.type==='price')return{original:`${fmt(modification.original_amount)} ${esc(modification.currency||'')} / ${esc(modification.unit||'')}`,experimental:`${fmt(modification.amount)} ${esc(modification.currency||'')} / ${esc(modification.unit||'')} (${sensitivityText('hipotético','hypothetical')})`};if(modification.type==='exclude')return{original:sensitivityText('disponível','available'),experimental:sensitivityText('excluído','excluded')};if(modification.type==='bound')return{original:`${boundsText(modification.original_minimum_kg_dm,modification.original_maximum_kg_dm)}`,experimental:`${boundsText(modification.new_minimum_kg_dm,modification.new_maximum_kg_dm)}`};if(modification.type==='baseline')return{original:sensitivityText('configuração original','original configuration'),experimental:sensitivityText('inalterada','unchanged')};return{original:sensitivityText('configuração própria','custom configuration'),experimental:'—'};}
+function compatibilityNotes(comparability){if(!comparability)return[];const notes=[];notes.push(comparability.same_currency?'Mesma moeda nos preços dos experimentos.':'Moedas diferentes: custos não são diretamente comparáveis.');notes.push(comparability.same_price_units?'Mesmas unidades de preço.':'Unidades de preço diferentes: custos não são diretamente comparáveis.');if(comparability.applied_price_dates)notes.push('Datas de referência dos preços divergem entre cenários.');if(comparability.same_animal_configuration===false)notes.push('Configurações animais distintas: diferenças de custo não são atribuíveis apenas a ingredientes/preços.');if(comparability.same_scientific_fingerprint===false)notes.push('Impressões digitais científicas (commit/biblioteca) divergem entre cenários.');return notes;}
+function complianceText(experiment){if(!Array.isArray(experiment.constraints))return '—';const satisfied=experiment.constraints.filter(constraint=>constraint.satisfied).length;return `${satisfied}/${experiment.constraints.length}`;}
+function sensitivitySummaryTiles(result){const summary=result.summary,currency=result.experiments.find(experiment=>experiment.modification?.type==='price')?.modification?.currency;const unit=currency?` ${esc(currency)}/dia`:' u.m./dia';return `<div class="metrics sensitivity-tiles"><div class="metric"><div class="k">EXPERIMENTOS</div><div class="v">${summary.total}</div><div class="s">${summary.feasible} viável(eis) · ${summary.infeasible} sem solução viável</div></div><div class="metric"><div class="k">MENOR CUSTO ENCONTRADO</div><div class="v">${summary.min_cost_day===null?'—':fmt(summary.min_cost_day)+unit}</div><div class="s">Menor custo observado entre soluções viáveis; não é prova de ótimo global</div></div><div class="metric"><div class="k">VOLUME DOS CUSTOS</div><div class="v">${summary.max_cost_day===null?'—':fmt(summary.max_cost_day)+unit}</div><div class="s">${summary.cost_variation_pct===null?'Variação relativa indisponível (bases incomparáveis ou uma única solução viável)':`Variação relativa: ${fmt(summary.cost_variation_pct)}%`}</div></div></div>`;}
+function lineChartSVG(points){if(points.length<2)return '';const width=560,height=190,pad=56,innerW=width-2*pad,innerH=height-2*pad;const xs=points.map(point=>point.x),costs=points.map(point=>point.cost);const minX=Math.min(...xs),maxX=Math.max(...xs),minCost=Math.min(...costs),maxCost=Math.max(...costs);const scaleX=value=>pad+(value-minX)/((maxX-minX)||1)*innerW;const scaleY=value=>height-pad-(value-minCost)/((maxCost-minCost)||1)*innerH;const path=points.map((point,index)=>`${index?'L':'M'}${scaleX(point.x).toFixed(1)} ${scaleY(point.cost).toFixed(1)}`).join(' ');const markers=points.map(point=>`<circle cx="${scaleX(point.x).toFixed(1)}" cy="${scaleY(point.cost).toFixed(1)}" r="3.5"><title>${fmt(point.x)}% → ${fmt(point.cost)} ${sensitivityText('u.m./dia','unspecified units/day')}</title></circle>`).join('');const zeroLabel=points.some(point=>point.x===0)?`<line x1="${scaleX(0).toFixed(1)}" y1="${pad-10}" x2="${scaleX(0).toFixed(1)}" y2="${height-pad+8}" stroke-dasharray="4 3" opacity=".45"/><text x="${scaleX(0).toFixed(1)}" y="${height-pad+20}" font-size="11" text-anchor="middle" opacity=".8">0%</text>`:'';return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${sensitivityText('Custo diário otimizado em função da variação do preço do ingrediente','Optimized daily cost as ingredient price changes')}" class="sens-chart"><rect x="${pad}" y="${pad-8}" width="${innerW}" height="${innerH+16}" fill="none" opacity=".2"/><path d="${path}" fill="none" stroke="currentColor" stroke-width="2"/>${markers}${zeroLabel}<text x="${pad}" y="${pad-16}" font-size="11" opacity=".8">${sensitivityText('Custo/dia','Cost/day')} (${fmt(minCost)}–${fmt(maxCost)} ${sensitivityText('u.m.','unspecified units')})</text><text x="${pad}" y="${height-6}" font-size="11" opacity=".8">${sensitivityText('Variação do preço:','Price change:')} ${fmt(minX)}% → ${fmt(maxX)}%</text></svg>`;}
+function barChartSVG(items){if(!items.length)return '';const width=560,height=210,pad=64,innerW=width-2*pad,innerH=height-2*pad;const values=items.map(item=>item.value),maxValue=Math.max(...values);// Bars start at zero: height proportional to the value itself.
+const scale=value=>innerH*(value/maxValue||0);const slot=innerW/items.length;const bars=items.map((item,index)=>{const barHeight=scale(item.value),x=pad+index*slot+slot*0.15,width=slot*0.7,y=height-pad-barHeight;return `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${width.toFixed(1)}" height="${Math.max(barHeight,2).toFixed(1)}" opacity="${0.55+0.35*index/items.length}"><title>${esc(item.label)}: ${fmt(item.value)} ${sensitivityText('u.m./dia','unspecified units/day')}</title><desc>${esc(item.label)}</desc></rect><text x="${(x+width/2).toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="11" text-anchor="middle">${fmt(item.value)}</text><text x="${(x+width/2).toFixed(1)}" y="${(height-pad+16).toFixed(1)}" font-size="10.5" text-anchor="middle" opacity=".85"><tspan x="${(x+width/2).toFixed(1)}" dy="0">${esc(item.label.slice(0,14))}</tspan></text>`;}).join('');return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${sensitivityText('Custo diário otimizado por experimento avaliado','Optimized daily cost by evaluated experiment')}" class="sens-chart"><line stroke="currentColor" x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" opacity=".4"/><text x="${pad}" y="${pad-16}" font-size="11" opacity=".8">${sensitivityText('Custo por cenário: rótulos indicam os valores; eixo parte de zero','Cost by scenario: labels show values; axis starts at zero')}</text>${bars}</svg>`;}
+function referenceExperiment(result){const index=result.experiments.findIndex(experiment=>{const type=experiment.modification?.type;if(!experiment.ok)return false;if(type==='baseline'||type==='none')return true;return type==='price'&&experiment.modification.variation_pct===0;});return index>=0?index:null;}
+function renderSensitivityAnalysis(result){lastSensitivityResult=result;const output=$('sensitivityOutput');const blocks=[];const currency=result.mode==='scenario_comparison'?'':(result.experiments.find(experiment=>experiment.modification?.type==='price')?.modification?.currency??'');const referenceLabel=result.mode==='scenario_comparison'?sensitivityText('cenários salvos','saved scenarios'):esc(result.reference?.name||'—');const pipelineText=sensitivityText('cada experimento repetiu o pipeline nativo RuFaS alterando um insumo por vez.','each experiment reran the native RuFaS pipeline while changing one input at a time.');const currencyText=sensitivityText('Moeda dos preços simulados:','Simulated price currency:');blocks.push(`<p class="micro-note">${sensitivityText('Referência:','Reference:')} ${referenceLabel} · ${pipelineText}${currency?` ${currencyText} ${esc(currency)}.`:''}</p>`);
+blocks.push(sensitivitySummaryTiles(result));
+const rows=result.experiments.map(experiment=>{const values=sensitivityValues(experiment);const cost=experiment.cost_day;const solverStatus=experiment.solver_status??'—';const statusLabels={experiment_error:sensitivityText('erro no experimento','experiment error'),infeasible:sensitivityText('inviável','infeasible'),optimal:sensitivityText('ótimo','optimal'),feasible:sensitivityText('viável','feasible')};const resultStatus=statusLabels[experiment.status]||experiment.status||sensitivityText('falhou','failed');return `<tr><td>${esc(localizeFeedText(experiment.label))}</td><td>${esc(experiment.modified_input==='none'?'—':experiment.modified_input==='price'?sensitivityText('preço','price'):sensitivityText('disponibilidade','availability'))}</td><td>${values.original}</td><td>${values.experimental}</td><td>${experiment.ok?esc(statusLabels[String(solverStatus)]||String(solverStatus)):'—'}</td><td>${experiment.ok?`<span class="ok">${sensitivityText('viável','feasible')}</span>`:`<span class="error">${esc(resultStatus)}</span>`}</td><td class="numeric-col">${experiment.dmi===null||experiment.dmi===undefined?'—':fmt(experiment.dmi,3)}</td><td class="numeric-col">${cost===null||cost===undefined?'—':fmt(cost)}</td><td class="numeric-col">${experiment.cost_difference===null||experiment.cost_difference===undefined?'—':fmt(experiment.cost_difference)}</td><td class="numeric-col">${experiment.cost_difference_pct===null||experiment.cost_difference_pct===undefined?'—':fmt(experiment.cost_difference_pct)+'%'}</td><td>${complianceText(experiment)}</td></tr>`;}).join('');
+blocks.push(`<div class="tablewrap"><table class="table" style="min-width:900px"><caption>Experimentos executados</caption><thead><tr><th>Experimento</th><th>Insumo</th><th>Valor original</th><th>Valor do experimento</th><th>Status do solver</th><th>Viabilidade</th><th>kg MS/dia</th><th>Custo/dia (u.m.)</th><th>Δ custo/dia</th><th>Δ custo %</th><th>Restrições</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+if(result.mode==='price_sensitivity'){const points=result.experiments.filter(experiment=>experiment.ok&&experiment.cost_day!==null&&experiment.modification?.type==='price').map(experiment=>({x:experiment.modification.variation_pct,cost:experiment.cost_day}));const chart=lineChartSVG(points.sort((a,b)=>a.x-b.x));if(chart)blocks.push(`<div class="sens-visual"><h3>${sensitivityText('Custo diário por variação de preço','Daily cost by price variation')}</h3><p class="sub">${sensitivityText('A tabela acima é a fonte exata dos números; o gráfico apenas ilustra a tendência.','The table above is the source of exact values; the chart only illustrates the trend.')}</p>${chart}</div>`);}
+if(result.mode==='scenario_comparison'){const items=result.experiments.filter(experiment=>experiment.ok&&experiment.cost_day!==null).map(experiment=>({label:localizeFeedText(experiment.label),value:experiment.cost_day}));const chart=barChartSVG(items);if(chart)blocks.push(`<div class="sens-visual"><h3>${sensitivityText('Custo diário por cenário','Daily cost by scenario')}</h3>${chart}</div>`);const notes=compatibilityNotes(result.comparability);if(notes.length)blocks.push(`<div class="sens-visual"><h3>Comparabilidade</h3><ul>${notes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul></div>`);}
+const referenceIndex=referenceExperiment(result);const referenceData=referenceIndex===null?null:result.experiments[referenceIndex];
+if(referenceData&&Array.isArray(referenceData.ingredients)){const ingredientIds=[];const ingredientMap=new Map();for(const experiment of result.experiments){if(!Array.isArray(experiment.ingredients))continue;for(const ingredient of experiment.ingredients){if(!ingredientMap.has(ingredient.id)){ingredientMap.set(ingredient.id,{name:translateFeedName(ingredient.name)});ingredientIds.push(ingredient.id);}}}
+const ingredientRows=ingredientIds.map(id=>{const base=referenceData.ingredients.find(ingredient=>ingredient.id===id);const cells=result.experiments.map(experiment=>{const ingredient=Array.isArray(experiment.ingredients)?experiment.ingredients.find(entry=>entry.id===id):null;if(!ingredient)return '<td class="numeric-col">—</td>';const difference=base&&ingredient.kg_dm!==null?(ingredient.kg_dm-(base.kg_dm||0)):null;const relative=difference!==null&&base&&base.kg_dm?(100*difference/base.kg_dm):null;return `<td class="numeric-col">${fmt(ingredient.kg_dm,3)}</td><td class="numeric-col">${difference===null?'—':fmt(difference,3)}</td><td class="numeric-col">${relative===null?'—':fmt(relative,1)}%</td>`;}).join('');return `<tr><td>${esc(ingredientMap.get(id).name)} (${id})</td>${cells}</tr>`;}).join('');
+blocks.push(`<div class="tablewrap"><table class="table" style="min-width:760px"><caption>Ingrediente — quantidade por experimento e diferença absoluta/relativa contra o experimento de referência</caption><thead><tr><th>Ingrediente</th>${result.experiments.map(experiment=>`<th colspan="3">${esc(experiment.label)} (kg MS/dia · Δ · Δ%)</th>`).join('')}</tr></thead><tbody>${ingredientRows}</tbody></table></div>`);}
+output.innerHTML=blocks.join('');output.classList.remove('hidden');}
+document.querySelectorAll('#setup input, #setup select').forEach(field=>{if(!field.closest('#feedRows'))field.addEventListener('input',invalidateResult);});
+$('run').addEventListener('click',async()=>{
+ const btn=$('run'),version=++requestVersion;
+ if(activeRequest)activeRequest.abort();
+ invalidateResult();
+ requestVersion=version;
+ calculationState='loading';
+ btn.disabled=true;
+ btn.textContent='Calculando…';
+ $('errorBox').classList.add('hidden');
+ activeRequest=new AbortController();
+ try{
+  if(nativeWorkflow&&simplified()){
+   const selected=feeds.filter(feed=>feed.available!==false&&feed.rufas_id);
+   if(selected.length<2)throw Error('Selecione pelo menos dois ingredientes.');
+   const unpriced=selected.filter(feed=>!feed.price||feed.price==='');
+   if(unpriced.length)throw Error('Não é possível calcular: sem preço documentado para '+unpriced.map(feed=>translateFeedName(feed.name||('RuFaS '+feed.rufas_id))).join(', ')+'.');
+  }
+  const payload=nativeWorkflow?nativeScenario():scenario();
+  const weight=nativeWorkflow?payload.body_weight_kg:payload.animal.weight;
+  if(!Number.isFinite(weight)||weight<=0)throw Error('Informe um peso corporal válido.');
+  const resp=await fetch(nativeWorkflow?'/api/rufas-native':'/api/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:activeRequest.signal});
+  const res=await resp.json();
+  if(version!==requestVersion)return;
+  if(!resp.ok||!res.ok)throw Error(res.error||res.message||'Não foi possível otimizar.');
+  if(!Array.isArray(res.ingredients)||!Number.isFinite(res.cost_day)||(!nativeWorkflow&&(!res.metrics||!res.targets)))throw Error('O servidor retornou um resultado incompleto.');
+  lastResult=res;
+  lastConfiguration=payload;
+  lastEconomicRequest=nativeWorkflow?{configuration:payload,result:res}:null;
+  lastEconomicComparison=null;
+  showResults(res);
+  if(nativeWorkflow)void calculateEconomicComparison();
+  $('results').classList.remove('hidden');
+    $('printResults').disabled=false;
+  calculationState='success';
+  requestAnimationFrame(()=>$('results').querySelector('h2').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'}));
+ }catch(err){if(version!==requestVersion||err.name==='AbortError')return;calculationState='error';showError(err.message);}finally{if(version===requestVersion){activeRequest=null;btn.disabled=false;btn.innerHTML='Calcular dieta de menor custo <span aria-hidden="true">→</span>';}}
+});
+function economicRequestData(batchValue=''){
+ if(!lastEconomicRequest)return null;
+ const {configuration,result}=lastEconomicRequest,priceRecords=[];
+ for(const item of configuration.previous_ration||[]){
+  if(item.price_record){priceRecords.push({rufas_id:Number(item.rufas_id),...item.price_record});continue;}
+  if(item.price_as_fed!==undefined&&item.price_as_fed!=='')priceRecords.push({rufas_id:Number(item.rufas_id),amount:Number(item.price_as_fed),currency:item.price_currency||null,unit:item.price_unit||'kg_as_fed',source_type:item.price_source_type||'manual',source:item.price_source||'',reference_date:item.price_date||null,geography:item.price_geography||''});
+ }
+ for(const feed of configuration.feeds||[])if(feed.price_record)priceRecords.push({rufas_id:Number(feed.rufas_id),...feed.price_record});
+ const request={baseline_ration:(configuration.previous_ration||[]).map(item=>({rufas_id:Number(item.rufas_id),kg_dm_day:Number(item.kg_dm_day)})),optimized_ration:(result.ingredients||[]).map(item=>({rufas_id:Number(item.id),name:item.name,kg_dm_day:Number(item.kg_dm)})),price_records:priceRecords};
+ const count=String(batchValue??'').trim();if(count!=='')request.batch_size=Number.isFinite(Number(count))?Number(count):count;
+ return request;
+}
+function economicIssueText(issue){
+ if(activeLocale==='en-US')return issue.message||'';
+ if(issue.code==='missing_price'&&issue.rufas_id!==undefined)return `Não foi informado preço documentado para o alimento RuFaS ${issue.rufas_id}.`;
+ if(issue.code==='missing_price_provenance'&&issue.rufas_id!==undefined){
+  const fieldNames={currency:'moeda',reference_date:'data de referência',geography:'região',source:'fonte'};
+  if(fieldNames[issue.field])return `O preço do alimento RuFaS ${issue.rufas_id} não informa ${fieldNames[issue.field]}.`;
+ }
+ return issue.message||'';
+}
+function renderEconomicPanel(data=null,batchValue=''){
+ const en=activeLocale==='en-US',t=(pt,english)=>en?english:pt,unitLabels={kg_as_fed:t('kg natural','kg as-fed'),kg_dm:t('kg MS','kg DM'),metric_ton_as_fed:t('tonelada natural','metric ton as-fed')};
+ let resultHtml=`<p>${t('Executando a validação de cobertura, moeda, unidade, data e proveniência.','Checking price coverage, currency, unit, date, and provenance.')}</p>`;
+ if(data?.request_error)resultHtml=`<p class="error">${esc(data.request_error)}</p>`;
+ else if(data){
+  if(data.economic_comparison_available){
+   const economic=data.economic_results,currency=economic.currency,base=economic.baseline,opt=economic.optimized,difference=economic.difference,batch=economic.batch;
+   resultHtml=`<p>${t('Comparação de custos disponível para preços com campos e proveniência informados. A origem não foi verificada independentemente.','Cost comparison is available for prices with supplied fields and provenance. Sources were not independently verified.')}</p><div class="tablewrap"><table class="table"><thead><tr><th>${t('Indicador','Measure')}</th><th>${t('Dieta anterior','Previous ration')}</th><th>${t('Dieta otimizada','Optimized ration')}</th><th>${t('Anterior − otimizada','Baseline − optimized')}</th></tr></thead><tbody><tr><td>${t('Por animal/dia','Per animal/day')}</td><td>${formatMoney(base.cost_day,currency)}</td><td>${formatMoney(opt.cost_day,currency)}</td><td>${formatMoney(difference.per_animal_day,currency)}</td></tr><tr><td>${t('Estimativa em 30 dias','30-day estimate')}</td><td>${formatMoney(base.cost_month_30_days,currency)}</td><td>${formatMoney(opt.cost_month_30_days,currency)}</td><td>${formatMoney(difference.per_animal_month_30_days,currency)}</td></tr></tbody></table></div><p>${t('Diferença em relação ao custo da dieta anterior','Difference relative to previous-ration cost')}: ${difference.percent_of_baseline===null?t('não calculável (custo-base zero)', 'not calculable (zero baseline cost)'):fmt(difference.percent_of_baseline,2)+'%'}. ${t('Custo menor não demonstra maior rentabilidade.','Lower feed cost does not establish higher profitability.')}</p>${batch?`<p>${t('Lote','Batch')} ${batch.animal_count}: ${formatMoney(batch.difference_day,currency)}/${t('dia','day')} · ${formatMoney(batch.difference_month_30_days,currency)}/${t('30 dias','30 days')}.</p>`:''}<p>${t('Base de preços','Price basis')}: ${esc(economic.geography)} · ${esc(economic.price_date)} · ${esc(translateSource(economic.price_source_type))}. ${t('Valores originais e unidades comerciais abaixo; normalização para custo usa o teor de MS catalogado para o ID RuFaS exato.','Original values and commercial units below; cost normalization uses the DM fraction in the exact RuFaS feed record.')}</p>`;
+   if(data.iofc?.status!=='calculated')resultHtml+=`<p>${t('IOFC indisponível: faltam preço do leite e produção de leite documentada para cada dieta, no mesmo período.','IOFC unavailable: milk price and documented milk production for each ration, on the same period, are missing.')}</p>`;
+  }else{
+   const issues=data.issues||[],missing=(data.missing_price_ids||[]).map(id=>`${t('ID RuFaS','RuFaS ID')} ${id}`),details=issues.map(economicIssueText).filter(Boolean);
+   resultHtml=`<p><strong>${t('Comparação econômica indisponível.','Economic comparison unavailable.')}</strong> ${t('Nenhum custo comparativo, economia ou IOFC foi calculado.','No comparative cost, savings, or IOFC was calculated.')}</p>${missing.length?`<p>${t('Preços ausentes para','Missing prices for')}: ${esc(missing.join(', '))}.</p>`:''}${details.length?`<ul>${details.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:`<p>${t('Informe as duas dietas e preços elegíveis para todos os IDs consumidos.','Supply both rations and eligible prices for every feed ID used.')}</p>`}<p>${t('Preços demonstrativos, sem moeda/data/região ou sem fonte exata não servem para comparação.','Demonstration prices, prices without currency/date/region, or prices without an exact source cannot support comparison.')}</p>`;
+  }
+ }
+ const priceRecords=economicRequestData(batchValue)?.price_records||[];
+ const priceRows=priceRecords.map(record=>`<tr><td>${esc(record.rufas_id)}</td><td>${record.amount===undefined?'—':fmt(record.amount,4)} ${esc(record.currency||t('moeda não informada','currency unspecified'))}/${esc(unitLabels[record.unit]||record.unit||'—')}</td><td>${esc(priceTypeLabel(record.source_type))}</td><td>${esc(record.source||t('fonte não informada','source not provided'))}${record.reference_date?` · ${esc(formatDate(record.reference_date))}`:''}${record.geography?` · ${esc(record.geography)}`:''}</td></tr>`).join('');
+ $('economicAnalysis').innerHTML=`<div class="economic-controls"><div class="field"><label for="economicBatchSize">${t('Tamanho do lote (opcional)','Batch size (optional)')}</label><input id="economicBatchSize" class="input" type="number" min="1" step="1" value="${esc(batchValue)}"></div><button class="btn" type="button" data-economic-run>${t('Validar comparação','Validate comparison')}</button></div><div id="economicComparisonResult" aria-live="polite">${resultHtml}</div>${priceRows?`<h3>${t('Preços e proveniência recebidos','Price records and provenance')}</h3><div class="tablewrap"><table class="table"><thead><tr><th>ID RuFaS</th><th>${t('Valor original/unidade','Original value/unit')}</th><th>${t('Tipo','Type')}</th><th>${t('Fonte, data e região','Source, date, and region')}</th></tr></thead><tbody>${priceRows}</tbody></table></div>`:''}`;
+}
+async function calculateEconomicComparison(){
+ if(!lastEconomicRequest)return;
+ const batchValue=$('economicBatchSize')?.value||'',request=economicRequestData(batchValue),version=++lastEconomicRequestVersion;
+ renderEconomicPanel(null,batchValue);
+ try{const response=await fetch('/api/economic-comparison',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)}),data=await response.json();if(version!==lastEconomicRequestVersion||!lastEconomicRequest)return;if(!response.ok)throw Error(data.error||'Falha na validação econômica.');lastEconomicComparison=data;renderEconomicPanel(data,batchValue);}
+ catch(error){if(version!==lastEconomicRequestVersion)return;lastEconomicComparison={request_error:error.message};renderEconomicPanel(lastEconomicComparison,batchValue);}
+}
+$('economicAnalysis').addEventListener('click',event=>{if(event.target.closest('[data-economic-run]'))void calculateEconomicComparison();});
+function showResults(r){
+ const native=r.nutritional_standard==='NASEM_2021';
+ $('resultContent').classList.remove('hidden');
+ $('results').classList.toggle('native-result',native);
+ $('engine').textContent=native?'Motor de cálculo: RuFaS — NASEM 2021':'Motor de cálculo: HiGHS (modelo linear temporário)';
+ $('costDay').textContent=money(r.cost_day);$('costMonth').textContent=money(r.cost_month);$('rDmi').textContent=fmt(r.dmi,1);
+ const en=activeLocale==='en-US';$('costDayLabel').textContent=native?(en?'SOLVER COST OBJECTIVE / ANIMAL / DAY':'OBJETIVO DE CUSTO DO SOLVER / ANIMAL / DIA'):(en?'ESTIMATED COST / ANIMAL / DAY':'CUSTO ESTIMADO / ANIMAL / DIA');$('costBasisNotice').textContent=native?(r.currency?(en?'Solver objective in the stated currency; see the separate economic-comparison check below.':'Objetivo do solver na moeda declarada; consulte abaixo a validação econômica separada.'):(en?'Solver objective in unspecified monetary units; no validated economic comparison.':'Objetivo do solver em unidade monetária não identificada; sem comparação econômica validada.')):(en?'Optimized scenario · values depend on supplied sources':'Cenário otimizado · valores dependem das fontes informadas');
+ $('saving').closest('.metric').classList.toggle('hidden',native);
+ const emissionOrigin=r.emissions?.provenance==='native_rufas_candidate_ration'?(en?'RuFaS candidate-ration calculation':'Cálculo RuFaS da dieta candidata'):r.emissions?.provenance==='native_rufas_previous_ration'?(en?'RuFaS previous-ration calculation':'Cálculo RuFaS da dieta anterior'):r.emissions?.provenance==='user_supplied'?(en?'Values supplied for this scenario':'Valores informados para o cenário'):(en?'Source not provided':'Fonte não informada');
+ 
+ $('modelNotice').innerHTML=native?(en?`<strong>RuFaS — NASEM 2021.</strong> Emissions: ${esc(emissionOrigin)}; source: ${esc(translateSource(r.emissions?.source_reference))}. Numerical feasibility requires biological review.`:`<strong>RuFaS — NASEM 2021.</strong> Emissões: ${esc(emissionOrigin)}; fonte: ${esc(translateSource(r.emissions?.source_reference))}. A viabilidade numérica exige avaliação zootécnica.`):'<strong>Modelo linear exploratório.</strong> Resultados exigem avaliação técnica.';
+ $('nativeAnalysis').classList.toggle('hidden',!native);
+ if(native){
+  $('bars').innerHTML=r.ingredients.map(f=>`<div class="bar-line"><span>${esc(translateFeedName(f.name))} (${f.id})</span><div class="bar-shell"><div class="bar-fill" style="width:${Math.max(0,Math.min(100,f.percent_dm))}%"></div></div><span class="bar-val">${fmt(f.percent_dm,1)}%</span></div>`).join('');
+  $('resultRows').innerHTML=r.ingredients.map(f=>`<tr><td>${esc(translateFeedName(f.name))} (${f.id})<br><small>${esc(priceTypeLabel(f.price_record?.source_type))} · ${f.price_record?.amount===undefined?'—':fmt(f.price_record.amount,4)} ${esc(f.price_record?.currency||'u.m.')}/${esc(priceUnitLabel(f.price_record?.unit))} · ${esc(f.price_record?.source||'fonte não documentada')} · ${esc(formatDate(f.price_record?.reference_date)||'sem data')}${f.price_record?.geography?` · ${esc(f.price_record.geography)}`:''}</small></td><td>${fmt(f.kg_dm,3)}</td><td>${fmt(f.kg_as_fed,3)}</td><td>${fmt(f.percent_dm,1)}%</td><td>${fmt(f.price_as_fed,3)}</td><td>${money(f.cost_day)}</td><td>${f.percent_cost===null?'—':fmt(f.percent_cost,1)+'%'}</td></tr>`).join('');
+  const constraintNames={calcium_constraint:'Cálcio',phosphorus_constraint:'Fósforo',protein_constraint_lower:'Proteína · limite mínimo',protein_constraint_upper:'Proteína · limite máximo',NDF_constraint_lower:'FDN · limite mínimo',NDF_constraint_upper:'FDN · limite máximo',forage_NDF_constraint:'FDN de volumosos',fat_constraint:'Gordura',DMI_constraint_upper:'Ingestão de matéria seca · máximo',DMI_constraint_lower:'Ingestão de matéria seca · mínimo',NASEM_net_energy_constraint:'Energia líquida · NASEM'};
+  $('checks').innerHTML=r.constraints.map(c=>`<div class="test"><div><b>${esc(constraintNames[c.name]||c.name.replaceAll('_',' '))}</b><small>Margem numérica: ${fmt(c.slack,5)} · tolerância: ${fmt(c.tolerance,4)} · unidade interna do RuFaS</small></div><strong class="${c.satisfied?'ok':'error'}">${c.satisfied?'Atendida':'Violada'}</strong></div>`).join('');
+  const nutrientNames={dry_matter:'Matéria seca',net_energy:'Energia líquida',metabolizable_protein:'Proteína metabolizável',ndf:'FDN',crude_protein:'Proteína bruta',starch:'Amido',fat:'Gordura',calcium:'Cálcio',phosphorus:'Fósforo'};
+  const nutrientUnits={'Mcal/day':'Mcal/dia','g/day':'g/dia','kg/day':'kg/dia','kg_dm/day':'kg MS/dia'};
+  $('nutrientRows').innerHTML=Object.keys(nutrientNames).map(key=>{const supply=r.nutrient_supply?.[key],required=r.requirements?.[key],requirementUnit=r.requirement_units?.[key],supplyUnit=supply?.unit;return `<tr><td>${nutrientNames[key]}</td><td>${Number.isFinite(required)?fmt(required,3):'—'}</td><td>${esc(nutrientUnits[requirementUnit]||requirementUnit||'—')}</td><td>${supply?fmt(supply.value,3):'—'}</td><td>${esc(nutrientUnits[supplyUnit]||supplyUnit||'—')}</td><td>${supply?'Oferta calculada; ver restrições nativas':'Oferta não avaliada isoladamente'}</td></tr>`}).join('');
+  const batchValue=$('economicBatchSize')?.value||'';renderEconomicPanel(lastEconomicComparison,batchValue);
+  return;
+ }
+ $('saving').textContent=r.saving_percent===null?'—':fmt(r.saving_percent,1)+'%';$('savingLabel').textContent=r.baseline_cost===null?r.baseline_status:'Base: '+money(r.baseline_cost)+'/dia';
+ $('bars').innerHTML=r.ingredients.map(f=>`<div class="bar-line"><span>${esc(f.name)}</span><div class="bar-shell"><div class="bar-fill" style="width:${Math.max(0,Math.min(100,f.percent_dm))}%"></div></div><span class="bar-val">${fmt(f.percent_dm,1)}%</span></div>`).join('');
+ $('resultRows').innerHTML=r.ingredients.map(f=>`<tr><td>${esc(translateFeedName(f.name))}</td><td>${fmt(f.kg_dm,3)}</td><td>${fmt(f.kg_natural,3)}</td><td>${fmt(f.percent_dm,1)}%</td><td>—</td><td>${money(f.cost)}</td><td>—</td></tr>`).join('');
+ const m=r.metrics,t=r.targets,lines=[['Proteína bruta',m.cp_pct,'≥ '+fmt(t.cp_pct)+'%',m.cp_pct>=t.cp_pct-0.0001,'%'],['FDN',m.ndf_pct,fmt(t.ndf_min)+' a '+fmt(t.ndf_max)+'%',m.ndf_pct>=t.ndf_min-.0001&&m.ndf_pct<=t.ndf_max+.0001,'%'],['Energia',m.energy,'≥ '+fmt(t.energy)+' Mcal',m.energy>=t.energy-.0001,' Mcal'],['Volumosos',m.forage_pct,'≥ '+fmt(t.forage_pct)+'%',m.forage_pct>=t.forage_pct-.0001,'%']];$('checks').innerHTML=lines.map(z=>`<div class="test"><div><b>${esc(z[0])}</b><small>Meta: ${esc(z[2])}</small></div><strong class="${z[3]?'ok':'error'}">${fmt(z[1])}${z[4]}</strong></div>`).join('');
+}
+$('printResults').addEventListener('click',()=>{if(lastResult)window.print();});
+
+const profileLabels={mature_body_weight:'Peso adulto (kg)',body_condition_score_5:'Escore de condição corporal (1–5)',days_in_milk:'Dias em lactação',day_of_pregnancy:'Dia de gestação',calving_interval:'Intervalo entre partos (dias)',milk_fat:'Gordura do leite (%)',milk_true_protein:'Proteína verdadeira do leite (%)',milk_lactose:'Lactose do leite (%)',milk_production:'Produção de leite (kg/dia)',housing:'Alojamento',distance:'Distância percorrida (m)',ndf_percentage:'FDN informada (%)',process_based_phosphorus_requirement:'Fósforo do módulo de processo (g/dia)'};
+const primaryProfileKeys=new Set(['days_in_milk','day_of_pregnancy','milk_fat','milk_true_protein','milk_production']);
+const lactationPhases=['fresh','early','mid','late'];
+let profileRequestVersion=0;
+function profileInputs(){return [...document.querySelectorAll('#animalPrimaryFields [data-profile], #advancedFields [data-profile]')];}
+function collectProfileParameters(){return Object.fromEntries(profileInputs().map(input=>[input.dataset.profile,input.value===''?null:input.value]));}
+function setProfileParameters(parameters={}){for(const input of profileInputs())input.value=Object.prototype.hasOwnProperty.call(parameters,input.dataset.profile)?(parameters[input.dataset.profile]??''):'';$('pregnant').checked=Boolean(parameters.day_of_pregnancy!==undefined&&parameters.day_of_pregnancy!==null&&parameters.day_of_pregnancy!=='');syncPregnancyField();}
+function syncPregnancyField(){const checked=$('pregnant').checked,field=$('pregnancyDayField'),input=$('profile-day_of_pregnancy');field.hidden=!checked;field.classList.toggle('hidden',!checked);input.required=checked;$('pregnant').setAttribute('aria-expanded',String(checked));}
+function renderAdvancedProfileFields(){if($('advancedFields').dataset.ready==='true')return;const entries=Object.entries(profileLabels).filter(([key])=>!primaryProfileKeys.has(key));$('advancedFields').innerHTML=entries.map(([key,label])=>{const optional=key==='ndf_percentage',control=key==='housing'?`<select class="input" id="profile-${key}" name="${key}" data-profile="${key}" required><option value="">${translateSource('Selecione')}</option><option value="Barn">Barn</option><option value="Grazing">Grazing</option></select>`:`<input class="input" id="profile-${key}" name="${key}" data-profile="${key}" type="number" min="0" step="any" ${optional?'':'required'}>`;const hint=optional?`<small class="micro-note">${translateSource('Quando vazia, a FDN é derivada da composição da dieta candidata.')}</small>`:'';return `<div class="field"><label for="profile-${key}">${translateSource(label)}</label>${control}${hint}</div>`;}).join('');$('advancedFields').dataset.ready='true';$('advancedFields').dataset.category='lactating_cow';}
+function renderProfileSummary(){const phase=$('lactationPhase').selectedOptions[0]?.textContent||'',parity=$('category').selectedOptions[0]?.textContent||'',weight=Number($('weight').value),weightText=Number.isFinite(weight)&&weight>0?fmt(weight,1)+' kg':(activeLocale==='en-US'?'not provided':'não informado');$('profileSummary').textContent=[activeLocale==='en-US'?'Lactating cow':'Vaca em lactação',phase|| (activeLocale==='en-US'?'phase not selected':'fase não selecionada'),parity,weightText].filter(Boolean).join(' · ');}
+function renderRequirementTable(data){if(!data||data.status!=='success')return;$('requirementsStatus').textContent=(activeLocale==='en-US'?'Requirements calculated from the entered animal data.':'Exigências calculadas com os dados informados.');$('requirementsTable').innerHTML='<table class="table"><thead><tr><th>Nutriente</th><th>Requisito</th><th>Mínimo</th><th>Máximo</th><th>Unidade</th><th>Situação do limite</th></tr></thead><tbody>'+Object.entries(data.constraints).map(([key,item])=>`<tr><td>${({net_energy:'Energia líquida',metabolizable_protein:'Proteína metabolizável',calcium:'Cálcio',phosphorus:'Fósforo',dry_matter:'Matéria seca'})[key]||esc(key)}</td><td>${fmt(data.requirements[key],2)}</td><td>${item.minimum===null?'—':fmt(item.minimum,2)}</td><td>${item.maximum===null?'—':fmt(item.maximum,2)}</td><td>${({'Mcal/day':'Mcal/dia','g/day':'g/dia','kg/day':'kg/dia'})[item.unit]||esc(item.unit)}</td><td>${({calculated:'Calculado pelo NASEM',preliminary_diet_dependent:'Depende da dieta',requires_ration_configuration:'Definido na formulação'})[item.status]||esc(item.status)}</td></tr>`).join('')+'</tbody></table>';$('requirementsTable').classList.remove('hidden');}
+async function updateRequirements(initialParameters=null){
+ const version=++profileRequestVersion,category=$('category').value,weight=Number($('weight').value);
+ if(initialParameters!==null)setProfileParameters(initialParameters);
+ renderProfileSummary();
+ invalidateResult();
+ $('requirementsTable').classList.add('hidden');
+ if(!Number.isFinite(weight)||weight<=0){$('requirementsStatus').textContent=activeLocale==='en-US'?'Enter a valid body weight.':'Informe um peso corporal válido.';return;}
+ if($('pregnant').checked&&!$('profile-day_of_pregnancy').value){$('requirementsStatus').textContent=activeLocale==='en-US'?'Enter the day of pregnancy or clear Pregnant.':'Informe o dia de gestação ou desmarque Gestante.';return;}
+ $('requirementsStatus').textContent=activeLocale==='en-US'?'Calculating requirements…':'Calculando exigências…';
+ const parameters=initialParameters!==null?Object.fromEntries(Object.keys(profileLabels).map(key=>[key,Object.prototype.hasOwnProperty.call(initialParameters,key)?(initialParameters[key]??null):null])):collectProfileParameters();
+ const request={animal_category:category,body_weight_kg:weight,parameters};if(nativeWorkflow&&previousRation.length){try{Object.assign(request,previousRationPayload(false));}catch(error){$('requirementsStatus').textContent=error.message;return;}}
+ try{const response=await fetch('/api/nutritional-requirements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});const data=await response.json();if(version!==profileRequestVersion)return;
+ if(!response.ok)throw Error(data.error||'Falha ao carregar o perfil.');
+ if(data.status!=='success'){
+  if(data.status==='incomplete_input'&&nativeWorkflow&&(data.missing_inputs||[]).includes('ndf_percentage')){
+   const otherMissing=(data.missing_inputs||[]).filter(key=>key!=='ndf_percentage').map(key=>profileLabels[key]||key);
+   const note='FDN da dieta otimizada será calculada durante a formulação.';
+   $('requirementsStatus').textContent=otherMissing.length?'Dados adicionais necessários: '+otherMissing.concat(note).join(', '):note;
+  }else $('requirementsStatus').textContent=data.status==='incomplete_input'?'Dados adicionais necessários: '+(data.missing_inputs||[]).map(key=>profileLabels[key]||key).join(', '):data.message||'Cálculo indisponível.';
+  if(nativeWorkflow&&!simplified()&&data.status==='incomplete_input'&&(data.missing_inputs||[]).some(key=>key!=='ndf_percentage'))$('advancedProfile').open=true;
+  return;
+ }
+ lastRequirementsData=data;renderRequirementTable(data);
+ }catch(error){if(version===profileRequestVersion)$('requirementsStatus').textContent=error.message;}
+}
+function onLactationPhaseChange(){renderProfileSummary();invalidateResult();}
+function onPregnancyChange(){if(!$('pregnant').checked)$('profile-day_of_pregnancy').value='';syncPregnancyField();updateRequirements();}
+$('category').addEventListener('change',()=>updateRequirements());
+$('lactationPhase').addEventListener('change',onLactationPhaseChange);
+$('pregnant').addEventListener('change',onPregnancyChange);
+$('animalPrimaryFields').addEventListener('change',event=>{if(event.target.matches('[data-profile]'))updateRequirements();});
+$('weight').addEventListener('input',()=>updateRequirements());
+$('advancedFields').addEventListener('change',()=>updateRequirements());
+renderAdvancedProfileFields();
+updateRequirements();
+
 renderTable();
+$('printResults').disabled=true;
 </script>
 </body>
 </html>

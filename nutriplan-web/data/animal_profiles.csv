@@ -1,0 +1,3 @@
+animal_category,label,animal_type,parity,mature_body_weight,body_condition_score_5,days_in_milk,day_of_pregnancy,average_daily_gain_heifer,calving_interval,milk_fat,milk_true_protein,milk_lactose,milk_production,housing,distance,lactating,ndf_percentage,process_based_phosphorus_requirement,source,assumption_type
+multiparous_lactating_cow,Vaca em lactação,LAC_COW,2,740.1,,,,,400,4,,,,Barn,,true,,,RuFaS input/data/animal/example_freestall_animal.json,reference_scenario_assumption
+first_lactation_cow,Vaca de primeira lactação,LAC_COW,1,740.1,,,,,400,4,,,,Barn,,true,,,RuFaS input/data/animal/example_freestall_animal.json,reference_scenario_assumption
