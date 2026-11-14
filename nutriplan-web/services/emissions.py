@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import math
 
+from services.numbers import parse_number
+
 from RUFAS.biophysical.animal.data_types.nutrition_data_structures import NutritionSupply
 from RUFAS.biophysical.animal.digestive_system.enteric_methane_calculator import EntericMethaneCalculator
 from RUFAS.biophysical.animal.digestive_system.manure_excretion_calculator import ManureExcretionCalculator
@@ -20,7 +22,7 @@ def previous_ration_feeds(previous_ration, library, build_feed):
             raise ValueError('Previous-ration feed entries must be objects.')
         try:
             identifier = int(item['rufas_id'])
-            amount = float(item['kg_dm_day'])
+            amount = parse_number(item['kg_dm_day'], 'kg_dm_day', minimum=0)
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError('Invalid previous-ration feed identifier or dry matter quantity.') from error
         if identifier in seen or not math.isfinite(amount) or amount <= 0:

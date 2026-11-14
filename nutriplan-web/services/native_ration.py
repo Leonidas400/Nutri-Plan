@@ -15,6 +15,7 @@ from RUFAS.data_structures.feed_storage_to_animal_connection import (
 from RUFAS.units import MeasurementUnits
 
 from services.nutrition import calculate
+from services.numbers import parse_number
 from services.emissions import (
     calculate_candidate_ration_emissions, calculate_previous_ration_emissions, previous_ration_ndf_percent,
 )
@@ -37,7 +38,17 @@ ANIMAL_MODELS = {
 OPTIMIZATION_READY = {'multiparous_lactating_cow', 'first_lactation_cow'}
 
 
-class CandidateRationOptimizer(RationOptimizer):
+class DeterministicRationOptimizer(RationOptimizer):
+    """Start native optimization from the same feasible bounds for identical inputs."""
+
+    def _build_initial_value(self, previous_ration, ration_config):
+        if previous_ration is not None:
+            return super()._build_initial_value(previous_ration, ration_config)
+        target = ration_config.initial_dry_matter_requirement * ration_config.dmi_requirement_boost
+        return _allocate_candidate_seed(ration_config.feeds_used, target)
+
+
+class CandidateRationOptimizer(DeterministicRationOptimizer):
     """Use native lactating-cow equations with candidate-specific NDF and emissions."""
 
     def __init__(self, animal_payload, calculate_candidate_emissions=True, seed=None):
@@ -155,14 +166,7 @@ def resolve_emissions(payload, animal, library):
         return emissions
     if len(provided) != len(emission_keys):
         return None
-    source = payload.get('emission_source')
-    if not isinstance(source, str) or not source.strip():
-        raise ValueError('A documented emission source is required for explicit values.')
-    methane, urine_nitrogen = (float(payload[key]) for key in emission_keys)
-    if not all(math.isfinite(value) and value >= 0 for value in (methane, urine_nitrogen)):
-        raise ValueError('Invalid methane or urinary nitrogen measurement.')
-    return {'enteric_methane_g_day': methane, 'urine_nitrogen_kg_day': urine_nitrogen,
-            'provenance': 'user_supplied', 'source_reference': source.strip()}
+    return _explicit_emissions(payload)
 
 
 def feed_library():
@@ -202,8 +206,8 @@ def build_feed(item, library=None):
         if price_record is None:
             raise ValueError('Price is required.')
         price_as_fed = price_record['price_as_fed']
-        minimum = float(item.get('minimum_kg_dm', 0))
-        maximum = float(item['maximum_kg_dm'])
+        minimum = parse_number(item.get('minimum_kg_dm', 0), 'minimum_kg_dm', minimum=0)
+        maximum = parse_number(item['maximum_kg_dm'], 'maximum_kg_dm', minimum=0)
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f'Feed {identifier}: invalid price or inclusion bounds.') from error
     dry_matter_fraction = float(row['DM']) / 100
@@ -245,7 +249,7 @@ def prepare_animal_payload(payload):
         supplied_ndf = parameters.get('ndf_percentage')
         if supplied_ndf is not None and supplied_ndf != '':
             try:
-                difference = abs(float(supplied_ndf) - derived_ndf)
+                difference = abs(parse_number(supplied_ndf, 'ndf_percentage', minimum=0, maximum=100) - derived_ndf)
             except (TypeError, ValueError) as error:
                 raise ValueError('Invalid previous-ration NDF value.') from error
             if not math.isfinite(difference) or difference > 1e-6:
@@ -282,8 +286,8 @@ def _explicit_emissions(payload):
     if not isinstance(source, str) or not source.strip():
         raise ValueError('A documented emission source is required for explicit values.')
     try:
-        methane = float(payload['enteric_methane_g_day'])
-        urine_nitrogen = float(payload['urine_nitrogen_kg_day'])
+        methane = parse_number(payload['enteric_methane_g_day'], 'enteric_methane_g_day', minimum=0)
+        urine_nitrogen = parse_number(payload['urine_nitrogen_kg_day'], 'urine_nitrogen_kg_day', minimum=0)
     except (TypeError, ValueError) as error:
         raise ValueError('Invalid methane or urinary nitrogen measurement.') from error
     if not all(math.isfinite(value) and value >= 0 for value in (methane, urine_nitrogen)):
@@ -378,13 +382,13 @@ def optimize_native(payload):
             emissions['source_reference'] = source.strip()
         methane = emissions['enteric_methane_g_day']
         urine_nitrogen = emissions['urine_nitrogen_kg_day']
-        optimizer = RationOptimizer()
+        optimizer = DeterministicRationOptimizer()
     elif candidate_ndf_mode:
         emissions = explicit_emissions
         methane = explicit_emissions['enteric_methane_g_day'] if explicit_emissions else None
         urine_nitrogen = explicit_emissions['urine_nitrogen_kg_day'] if explicit_emissions else None
         optimizer = CandidateRationOptimizer(
-            animal_payload=payload,
+            animal_payload=animal,
             calculate_candidate_emissions=explicit_emissions is None,
             seed=candidate_seed,
         )
@@ -392,7 +396,7 @@ def optimize_native(payload):
         emissions = explicit_emissions
         methane = emissions['enteric_methane_g_day']
         urine_nitrogen = emissions['urine_nitrogen_kg_day']
-        optimizer = RationOptimizer()
+        optimizer = DeterministicRationOptimizer()
 
     solution, configuration = optimizer.attempt_optimization(
         nutrient_standard=NutrientStandard.NASEM,
@@ -493,7 +497,7 @@ def optimize_native(payload):
             baseline['price_records'].append(price_record)
             price = price_record['price_as_fed']
             dm_fraction = float(library[identifier]['DM']) / 100
-            baseline_cost += float(item['kg_dm_day']) / dm_fraction * price
+            baseline_cost += parse_number(item['kg_dm_day'], 'kg_dm_day', minimum=0) / dm_fraction * price
         if baseline['missing_price_ids']:
             baseline['status'] = 'missing_prices'
         else:

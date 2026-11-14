@@ -14,6 +14,7 @@ from pathlib import Path
 
 from scipy.optimize import linprog
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from services.numbers import parse_number
 from services.nutrition import categories, calculate
 
 ROOT = Path(__file__).resolve().parent
@@ -24,15 +25,7 @@ MAX_BODY = 2_000_000
 
 
 def number(value, name, minimum=None, maximum=None):
-    if isinstance(value, bool):
-        raise ValueError(f'{name}: informe um número válido.')
-    try:
-        v = float(value)
-    except (TypeError, ValueError):
-        raise ValueError(f'{name}: informe um número válido.')
-    if not math.isfinite(v) or (minimum is not None and v < minimum) or (maximum is not None and v > maximum):
-        raise ValueError(f'{name}: valor fora do intervalo permitido.')
-    return v
+    return parse_number(value, name, minimum=minimum, maximum=maximum)
 
 
 def validate(payload):
@@ -296,6 +289,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(data)))
             self.end_headers()
             self.wfile.write(data)
+        elif request_path in ('/templates/animals.csv', '/templates/property.csv'):
+            filename = 'animals.csv' if request_path == '/templates/animals.csv' else 'property.csv'
+            data = (ROOT / 'data/templates' / filename).read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/csv; charset=utf-8')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
         elif request_path == '/styles.css':
             data = (ROOT / 'styles.css').read_bytes()
             self.send_response(200)
@@ -325,7 +328,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send({'error': 'Rota não encontrada.'}, 404)
 
     def do_POST(self):
-        if self.path not in ('/api/optimize', '/api/rufas-native', '/api/nutritional-requirements', '/api/scenarios/validate', '/api/sensitivity-analysis', '/api/economic-comparison'):
+        if self.path not in ('/api/csv-preview', '/api/optimize', '/api/rufas-native', '/api/nutritional-requirements', '/api/scenarios/validate', '/api/sensitivity-analysis', '/api/economic-comparison'):
             return self._send({'error': 'Rota não encontrada.'}, 404)
         try:
             size = int(self.headers.get('Content-Length', '0'))
@@ -338,6 +341,9 @@ class Handler(BaseHTTPRequestHandler):
                     data = {'scenario': validate_scenario(payload.get('scenario'), allow_incomplete=True)}
                 else:
                     data = {'scenario': validate_scenario(payload)}
+            elif self.path == '/api/csv-preview':
+                from services.csv_import import preview_csv
+                data = preview_csv(payload)
             elif self.path == '/api/optimize':
                 data = optimize(payload)
             elif self.path == '/api/nutritional-requirements':

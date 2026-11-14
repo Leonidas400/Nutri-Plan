@@ -10,6 +10,7 @@ import copy
 import json
 import math
 
+from services.numbers import parse_number
 from services.native_ration import optimize_native
 from services.scenarios import validate_scenario
 
@@ -19,20 +20,8 @@ MAX_COMPARISON_SCENARIOS = 4
 
 
 def _float(value, label, allow_missing=False, default=None):
-    """Coerce a scenario value to float, optionally tolerating absence."""
-    if value in (None, ''):
-        if allow_missing:
-            return default
-        raise ValueError(f'{label} is required.')
-    if isinstance(value, bool):
-        raise ValueError(f'{label}: invalid number.')
-    try:
-        result = float(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f'{label}: invalid number.') from error
-    if not math.isfinite(result):
-        raise ValueError(f'{label}: invalid number.')
-    return result
+    result = parse_number(value, label, optional=allow_missing)
+    return default if result is None else result
 
 
 def resolve_candidate_price(item, configuration):

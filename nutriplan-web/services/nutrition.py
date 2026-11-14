@@ -5,6 +5,8 @@ import csv
 import math
 from pathlib import Path
 
+from services.numbers import parse_number
+
 from RUFAS.biophysical.animal.data_types.animal_types import AnimalType
 from RUFAS.biophysical.animal.nutrients.nasem_requirements_calculator import NASEMRequirementsCalculator
 
@@ -18,6 +20,18 @@ PARAMETERS = (
 )
 OPTIONAL = {'day_of_pregnancy', 'average_daily_gain_heifer'}
 NUMERIC = set(PARAMETERS) - {'housing'}
+HOUSING_TYPES = {'Barn', 'Grazing'}
+
+
+def parse_numeric_parameter(key, raw):
+    """Shared input validation for the existing numeric animal parameters."""
+    value = parse_number(raw, key, minimum=1 if key == 'body_condition_score_5' else 0,
+                         maximum=5 if key == 'body_condition_score_5' else
+                         100 if key in {'milk_fat', 'milk_true_protein', 'milk_lactose', 'ndf_percentage'} else None,
+                         integer=key in {'days_in_milk', 'day_of_pregnancy', 'calving_interval'})
+    if key == 'mature_body_weight' and value <= 0:
+        raise ValueError('mature_body_weight must be positive.')
+    return value
 
 
 def profiles():
@@ -37,44 +51,40 @@ def categories():
 
 
 def calculate(payload, include_native=False):
+    if not isinstance(payload, dict):
+        return {'status': 'invalid_input', 'message': 'Animal input must be an object.', 'missing_inputs': []}
     category = payload.get('animal_category')
     profile = profiles().get(category)
     if profile is None:
         return {'status': 'unsupported_category', 'missing_inputs': [], 'message': 'Unsupported animal category.'}
     try:
-        weight = float(payload.get('body_weight_kg'))
+        weight = parse_number(payload.get('body_weight_kg'), 'body_weight_kg', minimum=0)
         if not math.isfinite(weight) or weight <= 0:
             raise ValueError
     except (TypeError, ValueError):
         return {'status': 'incomplete_input', 'animal_category': category,
                 'missing_inputs': ['body_weight_kg'], 'message': 'A positive body weight is required.'}
-    overrides = payload.get('parameters') or {}
+    overrides = payload.get('parameters', {})
+    if overrides is None:
+        overrides = {}
     if not isinstance(overrides, dict) or set(overrides) - set(PARAMETERS):
         return {'status': 'invalid_input', 'message': 'Invalid profile parameters.', 'missing_inputs': []}
     values = {}
     missing = []
     for key in PARAMETERS:
         raw = overrides.get(key, profile[key])
-        if raw is None or raw == '':
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
             values[key] = None
             if key not in OPTIONAL:
                 missing.append(key)
         elif key in NUMERIC:
             try:
-                value = float(raw)
-                if not math.isfinite(value) or value < 0:
-                    raise ValueError
-                if key == 'body_condition_score_5' and not 1 <= value <= 5:
-                    raise ValueError
-                if key in {'milk_fat', 'milk_true_protein', 'milk_lactose', 'ndf_percentage'} and value > 100:
-                    raise ValueError
-                if key in {'days_in_milk', 'day_of_pregnancy', 'calving_interval'} and not value.is_integer():
-                    raise ValueError
+                value = parse_numeric_parameter(key, raw)
                 values[key] = value
             except (TypeError, ValueError):
                 return {'status': 'invalid_input', 'message': f'Invalid value for {key}.', 'missing_inputs': []}
         else:
-            if key == 'housing' and raw not in {'Barn', 'Grazing'}:
+            if key == 'housing' and raw not in HOUSING_TYPES:
                 return {'status': 'invalid_input', 'message': 'Invalid housing type.', 'missing_inputs': []}
             values[key] = str(raw)
     base = {'animal_category': category, 'body_weight_kg': weight,

@@ -4,6 +4,8 @@ from __future__ import annotations
 import datetime
 import math
 
+from services.numbers import parse_number
+
 UNITS = {'kg_as_fed', 'kg_dm', 'metric_ton_as_fed'}
 SOURCES = {'manual', 'market_reference', 'historical', 'actual_cost', 'demonstration'}
 
@@ -13,9 +15,7 @@ def normalize_price(record, dry_matter_percent, feed_id):
     if not isinstance(record, dict):
         raise ValueError(f'Feed {feed_id}: price record must be an object.')
     try:
-        if isinstance(record.get('amount'), bool):
-            raise ValueError
-        amount = float(record['amount'])
+        amount = parse_number(record['amount'], 'Price', minimum=0)
         dm = float(dry_matter_percent) / 100
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f'Feed {feed_id}: invalid price or dry matter.') from error
@@ -63,14 +63,14 @@ def resolve_price(item, library):
         raise ValueError(f'Unknown RuFaS feed ID: {identifier}.')
     if item.get('price_record') is not None:
         record = normalize_price(item['price_record'], library[identifier]['DM'], identifier)
-        if item.get('price_as_fed') is not None and not math.isclose(float(item['price_as_fed']), record['price_as_fed'], rel_tol=1e-8, abs_tol=1e-8):
+        if item.get('price_as_fed') is not None and not math.isclose(parse_number(item['price_as_fed'], 'Price', minimum=0), record['price_as_fed'], rel_tol=1e-8, abs_tol=1e-8):
             raise ValueError(f'Feed {identifier}: conflicting price fields.')
         return record
     raw = item.get('price_as_fed')
     if raw is None or raw == '':
         return None
     try:
-        amount = float(raw)
+        amount = parse_number(raw, 'Price', minimum=0)
     except (TypeError, ValueError) as error:
         raise ValueError(f'Feed {identifier}: invalid price.') from error
     if not math.isfinite(amount) or amount < 0:

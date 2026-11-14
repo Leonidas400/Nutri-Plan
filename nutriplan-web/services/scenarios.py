@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import datetime
 import hashlib
-import math
 import subprocess
 from pathlib import Path
 
+from services.numbers import parse_number
 from services.native_ration import feed_library
 from services.nutrition import PARAMETERS, profiles
 from services.prices import normalize_price
@@ -17,14 +17,9 @@ MAX_FEEDS = 25
 
 
 def _number(value, label, positive=False):
-    if isinstance(value, bool):
-        raise ValueError(f'{label}: invalid number.')
-    try:
-        result = float(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f'{label}: invalid number.') from error
-    if not math.isfinite(result) or (result <= 0 if positive else result < 0):
-        raise ValueError(f'{label}: invalid number.')
+    result = parse_number(value, label, minimum=0)
+    if positive and result <= 0:
+        raise ValueError(f'{label}: a positive number is required.')
     return result
 
 
