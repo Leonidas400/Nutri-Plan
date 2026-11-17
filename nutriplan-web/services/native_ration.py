@@ -21,7 +21,7 @@ from services.emissions import (
 )
 from RUFAS.biophysical.animal.nutrients.nutrition_supply_calculator import FeedInRation, NutritionSupplyCalculator
 from RUFAS.biophysical.animal.animal_module_constants import AnimalModuleConstants
-from services.prices import comparison_status, resolve_price
+from services.prices import comparison_status, default_price, resolve_price
 
 FEED_CSV = Path(__file__).resolve().parents[2] / 'input/data/feed/NASEM_Comp_with_TDN.csv'
 ENUMS = {'Fd_Category': FeedCategorization, 'feed_type': FeedComponentType, 'units': MeasurementUnits}
@@ -182,15 +182,101 @@ def feed_library():
     return library
 
 
+# Curated feeds used by the automatic selection mode. Frozen on purpose so the
+# optimizer's candidate pool stays predictable and scientifically reviewed.
+RECOMMENDED_FEED_IDS = frozenset({
+    52, 51, 110, 104, 106, 103,            # volumosos
+    154, 58, 4, 33, 49, 44, 193,           # energeticos
+    60, 181, 31, 164, 167, 42, 25,         # proteicos
+    230, 234, 258, 231, 229,               # minerais / corretivos
+})
+
+# Feeds that are not market inputs for a dairy diet and never belong to a group.
+EXCLUDED_FEED_CATEGORIES = {'Calf Liquid Feed'}
+EXCLUDED_FEED_NAME_PREFIXES = ('calf starter', 'farm es ')
+
+FEED_GROUPS = ('forage', 'energy', 'protein', 'mineral')
+
+
+def _num(row, key):
+    try:
+        value = float(row[key])
+        return value
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _is_excluded_feed(row):
+    category = str(row.get('Fd_Category') or '')
+    name = str(row.get('Name') or '').strip().lower()
+    if category in EXCLUDED_FEED_CATEGORIES:
+        return True
+    return any(name.startswith(prefix) for prefix in EXCLUDED_FEED_NAME_PREFIXES)
+
+
+def feed_group(row):
+    """Classify a feed into one of the four selection groups by composition.
+
+    Priority: mineral -> protein -> energy -> forage, so every market feed lands
+    in exactly one group.
+    """
+    category = str(row.get('Fd_Category') or '')
+    feed_type = str(row.get('feed_type') or '')
+    ndf = _num(row, 'NDF') or 0.0
+    cp = _num(row, 'CP') or 0.0
+    starch = _num(row, 'starch') or 0.0
+    tdn = _num(row, 'TDN') or 0.0
+    ee = _num(row, 'EE') or 0.0
+    if category == 'Vitamin/Mineral' or feed_type == 'Mineral':
+        return 'mineral'
+    if feed_type != 'Forage' and cp >= 25.0:
+        return 'protein'
+    if feed_type != 'Forage' and (starch >= 20.0 or tdn >= 75.0 or ee >= 12.0):
+        return 'energy'
+    return 'forage'
+
+
+def automatic_candidates():
+    """Build the optimizer's candidate list from the curated pool.
+
+    Only recommended feeds that carry a preloaded price take part; inclusion
+    bounds come from the NASEM feed library.
+    """
+    library = feed_library()
+    candidates = []
+    for identifier in sorted(RECOMMENDED_FEED_IDS):
+        row = library.get(identifier)
+        if row is None or default_price(identifier) is None:
+            continue
+        candidates.append({
+            'rufas_id': identifier,
+            'available': True,
+            'minimum_kg_dm': float(row['lower_limit']) if row.get('lower_limit') else 0.0,
+            'maximum_kg_dm': float(row['limit']) if row.get('limit') else 100.0,
+        })
+    return candidates
+
+
 def available_feeds():
-    return [{'id': identifier, 'name': row['Name'], 'category': row['Fd_Category'],
-             'dry_matter_percent': float(row['DM']),
-             'crude_protein_percent_dm': float(row['CP']) if row['CP'] else None,
-             'ndf_percent_dm': float(row['NDF']) if row['NDF'] else None,
-             'starch_percent_dm': float(row['starch']) if row['starch'] else None,
-             'fat_percent_dm': float(row['EE']) if row['EE'] else None,
-             'composition_source': str(FEED_CSV.relative_to(FEED_CSV.parents[3]))}
-            for identifier, row in feed_library().items()]
+    feeds = []
+    for identifier, row in feed_library().items():
+        if _is_excluded_feed(row):
+            continue
+        feeds.append({
+            'id': identifier,
+            'name': row['Name'],
+            'category': row['Fd_Category'],
+            'group': feed_group(row),
+            'recommended': identifier in RECOMMENDED_FEED_IDS,
+            'dry_matter_percent': float(row['DM']),
+            'crude_protein_percent_dm': float(row['CP']) if row['CP'] else None,
+            'ndf_percent_dm': float(row['NDF']) if row['NDF'] else None,
+            'starch_percent_dm': float(row['starch']) if row['starch'] else None,
+            'fat_percent_dm': float(row['EE']) if row['EE'] else None,
+            'default_price': default_price(identifier),
+            'composition_source': str(FEED_CSV.relative_to(FEED_CSV.parents[3])),
+        })
+    return feeds
 
 
 def build_feed(item, library=None):
@@ -329,7 +415,20 @@ def optimize_native(payload):
         payload = prepare_animal_payload(payload)
 
     selected = payload.get('feeds')
-    if not isinstance(selected, list) or len(selected) < 2:
+    if selected is None:
+        selected = []
+    if not isinstance(selected, list):
+        raise ValueError('Feeds must be a list.')
+    selection_mode = 'manual'
+    if not selected:
+        # No explicit selection: let the optimizer choose among the curated pool,
+        # using each feed's preloaded price and NASEM inclusion bounds.
+        selection_mode = 'automatic'
+        selected = automatic_candidates()
+        if len(selected) < 2:
+            return {'ok': False, 'status': 'incomplete_input',
+                    'message': 'No priced feeds are available for automatic selection.'}
+    elif len(selected) < 2:
         return {'ok': False, 'status': 'incomplete_input', 'message': 'Select at least two NASEM feeds.'}
     library = feed_library()
     if any(not isinstance(item, dict) for item in selected):
@@ -476,7 +575,10 @@ def optimize_native(payload):
                     'percent_dm': 100 * quantity / sum(quantities),
                     'percent_cost': 100 * quantity * feed.purchase_cost / cost if cost > 0 else None,
                     'price_record': selected_prices[feed.rufas_id]}
-                   for quantity, feed in zip(quantities, ordered)]
+                   for quantity, feed in zip(quantities, ordered)
+                   # In automatic mode the pool has many candidates; report only those
+                   # actually included in the ration (non-zero dry matter).
+                   if selection_mode != 'automatic' or quantity > 1e-6]
     # These are direct sums of native feed composition, not inferred NASEM energy or MP supply.
     nutrient_supply = {'dry_matter': {'value': sum(quantities), 'unit': 'kg/day', 'source': 'RuFaS optimized quantities'}}
     for label, field_name in (('ndf', 'NDF'), ('crude_protein', 'CP'), ('starch', 'starch'),
@@ -509,7 +611,8 @@ def optimize_native(payload):
                 baseline.update({'daily_savings': savings, 'monthly_savings': savings * 30,
                                  'percentage_savings': savings / baseline_cost * 100 if baseline_cost > 0 else None})
     result = {'ok': True, 'status': 'success', 'engine': 'RuFaS RationOptimizer',
-              'nutritional_standard': 'NASEM_2021', 'cost_day': cost, 'cost_month': cost * 30,
+              'nutritional_standard': 'NASEM_2021', 'selection_mode': selection_mode,
+              'cost_day': cost, 'cost_month': cost * 30,
               'currency': next(iter(candidate_currencies)),
               'dmi': sum(quantities), 'ingredients': ingredients,
               'requirements': animal['requirements'], 'constraints': constraints,

@@ -229,6 +229,8 @@ a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
 .requirements-panel{border-top:1px solid var(--rule);margin-top:22px;padding-top:20px}
 .previous-ration-card{margin:12px 0 18px;padding-top:8px}
+#panel-current{display:flex;flex-direction:column;gap:16px}
+#panel-current .previous-ration-card{max-width:760px}
 .previous-feed-row{display:grid;grid-template-columns:minmax(200px,2fr) minmax(140px,1fr) auto;align-items:end;gap:12px;margin:10px 0}
 .feed-discovery{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) minmax(180px,1fr);gap:12px 18px;align-items:end;margin:18px 0}
 .feed-discovery p,.feed-discovery .ingredient-note{grid-column:1/-1;margin:0}
@@ -304,6 +306,19 @@ body.simple-ui #results .table{min-width:700px}
 .feed-option input{flex:none;width:18px;height:18px;margin:0;accent-color:var(--accent)}
 .feed-option-name{min-width:0;font-weight:600;overflow-wrap:anywhere}
 .feed-empty{grid-column:1/-1;padding:12px;color:var(--muted)}
+.feed-mode-switch{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--rule-strong);border-radius:8px;background:var(--paper-white);margin-bottom:12px}
+.feed-mode-option{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:620;color:var(--label-color)}
+.feed-mode-option input{accent-color:var(--accent)}
+.feed-mode-option:has(input:checked){background:var(--accent-tint);color:var(--accent)}
+.feed-group-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.feed-group-tab{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border:1px solid var(--rule-strong);border-radius:16px;background:var(--paper-white);cursor:pointer;font-size:13px;font-weight:620;color:var(--label-color)}
+.feed-group-tab small{color:var(--muted);font-weight:500}
+.feed-group-tab.is-active{background:var(--accent);border-color:var(--accent);color:#fff}
+.feed-group-tab.is-active small{color:rgba(255,255,255,.85)}
+.feed-option-badge{flex:none;color:var(--accent);font-size:14px;line-height:1}
+.feed-option-price{margin-left:auto;flex:none;color:var(--muted);font-size:12px;font-weight:600;white-space:nowrap}
+.feed-option.is-noprice{cursor:not-allowed;opacity:.6}
+.feed-option.is-noprice .feed-option-price{color:var(--muted)}
 
 @media(max-width:700px){.feed-picker-toolbar{grid-template-columns:1fr;gap:8px}.feed-picker-controls{align-items:flex-end;flex-wrap:wrap;gap:8px 14px}.feed-picker-controls .field{min-width:160px}.feed-picker{grid-template-columns:1fr;max-height:380px}.feed-option{min-height:48px;padding:8px 10px}.res-grid{grid-template-columns:1fr}.result-overview{grid-template-columns:1fr}.previous-feed-row{grid-template-columns:1fr 1fr}.saved-scenario{align-items:flex-start;flex-direction:column}.saved-scenario .scenario-actions{justify-content:flex-start}}
 #feedComposition{border-top:1px solid var(--rule);padding:16px 0;margin-top:2px;font-size:14px}
@@ -322,13 +337,20 @@ body.simple-ui #results .table{min-width:700px}
 
 @media(max-width:400px){.sidebar{align-items:flex-start;flex-direction:column;gap:9px}.header-controls{width:100%;justify-content:flex-start}.preference-control{flex:1}.preference-select{width:100%;max-width:none}}
 
-/* Compact primary animal inputs; phase and parity stay visible above technical parameters. */
-.animal-primary-fields{margin-top:18px;gap:14px 16px;align-items:end}
+/* Cow information vs. production goals: two clearly separated groups. */
+.profile-group{border:1px solid var(--rule);border-radius:10px;padding:16px 16px 4px;margin-top:18px;min-width:0}
+.profile-group .fields{gap:14px 16px;align-items:end}
+.profile-group .check{min-height:44px;display:flex;align-items:center}
+.profile-group .check input{width:18px;height:18px;accent-color:var(--accent)}
+.profile-group-title{display:flex;flex-direction:column;gap:2px;padding:0 6px;margin:0;font-weight:800;font-size:14px;color:var(--ink)}
+.profile-group-title small{font-weight:500;font-size:12px;color:var(--muted)}
+.profile-group-goals{border-color:color-mix(in srgb,var(--accent) 40%,var(--rule));background:color-mix(in srgb,var(--accent) 4%,transparent)}
+.profile-goals-note{margin:0 0 14px;font-size:12.5px;line-height:1.5;color:var(--muted)}
 .animal-primary-fields .check{min-height:44px;display:flex;align-items:center}
 .animal-primary-fields .check input{width:18px;height:18px;accent-color:var(--accent)}
 #pregnancyDayField{max-width:260px}
-@media(max-width:620px){.animal-primary-fields{grid-template-columns:1fr 1fr;gap:12px}.animal-primary-fields .full{grid-column:1/-1}}
-@media(max-width:390px){.animal-primary-fields{grid-template-columns:1fr}}
+@media(max-width:620px){.profile-group .fields{grid-template-columns:1fr 1fr;gap:12px}.profile-group .full{grid-column:1/-1}}
+@media(max-width:390px){.profile-group .fields{grid-template-columns:1fr}}
 
 /* Local property values stay separate from the individual animal. */
 .property-profile{border-block:1px solid var(--rule);padding:12px 0;margin:18px 0}
