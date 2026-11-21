@@ -1,6 +1,6 @@
 # Documentação do NutriPlan
 
-Estado verificado em 13/11/2026. Aplicação local de Pesquisa Operacional para formular dietas de menor custo para vacas leiteiras em lactação.
+Estado verificado em 21/11/2026. Aplicação local de Pesquisa Operacional para formular dietas de menor custo para vacas leiteiras em lactação.
 
 ## 1. Escopo e fundamento
 
@@ -18,14 +18,15 @@ Na estrutura atual, `nutriplan-web/`, `RUFAS/`, `input/` e `venv/` ficam no mesm
 PYTHONPATH=.. ../venv/bin/python server.py
 ```
 
-O servidor escuta em `127.0.0.1`, porta 8765 por padrão; `PORT` permite outra porta. Não há necessidade de serviço externo para formular dietas ou importar CSV. O navegador precisa de JavaScript e armazenamento local para guardar preferências e configurações.
+O servidor escuta em `127.0.0.1`, porta 8765 por padrão; `PORT` permite outra porta. Não há necessidade de serviço externo para formular dietas. O navegador precisa de JavaScript. O armazenamento local guarda as preferências de idioma e tema.
 
 ## 3. Fluxo por abas
 
-1. **Animal**: selecione fase e paridade e informe os dados fisiológicos. Perfil da propriedade, CSV e parâmetros complementares ajudam a preencher entradas reais. O contexto alimentar e os cenários ficam em seção recolhível.
-2. **Ingredientes e preços**: pesquise, filtre e selecione os alimentos; informe preços e revise limites de inclusão. O checkbox é a única seleção de ingredientes. Clique **Calcular dieta de menor custo** ao final da tabela de preços.
-3. **Resultados**: a aba abre automaticamente após uma formulação bem-sucedida. Consulte dieta, custo, restrições e sensibilidade. O botão principal não é repetido nessa aba.
-4. **Metodologia**: consulte oito seções sobre ciência, animal, exigências, alimentos, otimização, emissões/energia, interpretação e referências. Inclui navegação interna, fluxo, tabelas e equações confirmadas no código. Não executa otimizações ao abrir.
+1. **Animal** reúne dados individuais, parâmetros complementares e emissões opcionais.
+2. **Dieta atual** reúne a composição opcional do lote, as quantidades em kg MS por animal/dia e o consumo total. Enquanto houver linha incompleta ou quantidade inválida, o total aparece como travessão. Os preços opcionais servem ao comparador. Se a lista estiver vazia, a formulação segue diretamente com os dados do animal e os ingredientes disponíveis.
+3. **Dieta otimizada** apresenta busca, grupos, seleção personalizada e tabela de preços. A seleção vazia usa o conjunto recomendado com preço. Uma seleção manual admite de 2 a 25 alimentos. **Calcular dieta otimizada** executa a análise integrada.
+4. **Resultados** abre após o cálculo e mostra custo, consumo, meta, resumo da maior meta viável e composição da dieta. O diagnóstico, a avaliação nutricional, as emissões, o comparador, a lista detalhada de metas e a sensibilidade estão disponíveis pela API.
+5. **Metodologia** contém doze seções com índice navegável por teclado, equações e uma tabela com as onze restrições verificadas.
 
 As abas reutilizam os controles existentes, preservam valores e não executam a otimização. Setas esquerda/direita, Home e End navegam entre abas; Tab entra nos controles. Alterar entradas após uma execução marca o resultado como desatualizado. Idioma e tema não alteram os dados científicos.
 
@@ -36,20 +37,20 @@ Antes da primeira execução, Resultados mostra um estado vazio. Durante o cálc
 | Entrada | Unidade / contrato | Uso no modelo instalado |
 | --- | --- | --- |
 | Peso corporal | kg, positivo | Manutenção, crescimento, consumo, minerais, atividade e emissões. |
-| Peso adulto | kg, positivo | Tamanho adulto e crescimento relativo; reutilizável da propriedade quando representativo. |
+| Peso adulto | kg, positivo | Tamanho adulto e crescimento relativo. |
 | Dias em lactação | dias inteiros, não negativos | Consumo e componentes fisiológicos; independente da fase escolhida. |
 | Produção de leite | kg/dia, não negativa | Exigências para lactação e excreção de nitrogênio. |
-| Gordura, proteína verdadeira, lactose | % do leite, 0–100 | Energia do leite e, conforme o componente, proteína/minerais. Proteína verdadeira não significa proteína bruta da dieta. |
+| Gordura, proteína verdadeira, lactose | % do leite, 0–100 por componente e no máximo 100 na soma | Energia do leite e, conforme o componente, proteína/minerais. Proteína verdadeira não significa proteína bruta da dieta. |
 | Paridade | primeira lactação / multípara | Perfil nativo 1 / 2, independente da fase. |
 | Gestação | sim/não; dia inteiro quando sim | Componentes gestacionais e correções de peso; ausência é `null`, não dia zero presumido. |
 | Condição corporal | escala 1–5 | Estimativa nativa de consumo. |
-| Intervalo entre partos | dias inteiros, não negativos na validação atual | Crescimento no método nativo; precisa representar uma condição utilizável pelo cálculo. |
+| Intervalo entre partos | dias inteiros positivos | Crescimento no método nativo; precisa representar uma condição utilizável pelo cálculo. |
 | Alojamento | `Barn` / `Grazing` | Atividade; rótulos PT são Confinamento / Pastejo, sem mudar os identificadores. |
 | Distância percorrida | m, não negativa | Energia de atividade; usar o significado solicitado pelo método instalado. |
 | FDN da dieta | % MS, opcional no modo candidato | Derivada da dieta candidata ou da dieta anterior; entrada técnica explícita permanece acessível. |
-| Fósforo do módulo de processo | g/dia, não negativo | Entrada complementar exigida pelo contrato `NutritionRequirements`; não é uma nova restrição independente de fósforo no otimizador. |
-| Metano entérico | g/dia | Perda energética; derivado da dieta ou informado com fonte documentada. |
-| Nitrogênio urinário | kg/dia | Perda energética; derivado da dieta ou informado com fonte documentada. |
+| Fósforo do módulo de processo | g/dia, não negativo | Valor calculado pelo módulo de processo. A restrição de fósforo usa o maior valor entre essa entrada e a exigência estimada pelo NASEM. |
+| Metano entérico | g/dia | Perda energética. Estimado na formulação ou informado pelo usuário. |
+| Nitrogênio urinário | kg/dia | Perda energética. Estimado na formulação ou informado pelo usuário. |
 | Preço | moeda/kg natural no preenchimento simples | Convertido para custo/kg MS usando a MS do alimento. Não há moeda presumida quando não foi documentada. |
 | Inclusão mínima e máxima | kg MS/animal/dia | Limites por ingrediente no solver. |
 
@@ -59,47 +60,19 @@ Essas faixas são validações de entrada; não certificam plausibilidade zooté
 
 `3,66` e `3.66` são equivalentes nos dois idiomas. Não use separadores de milhares: `1.234,56`, `1,234.56` e `1 234` são rejeitados. Um separador isolado sempre é decimal. Não informe símbolos monetários dentro do campo numérico.
 
-O frontend envia números JSON ou `null` para opcionais vazios. O backend normaliza também strings numéricas, rejeita booleanos e números não finitos e verifica limites. Campos obrigatórios vazios permanecem pendentes; não recebem zero. A lista de variações da sensibilidade usa vírgulas para separar itens e ponto para decimais fracionários.
+O frontend envia números JSON ou `null` para opcionais vazios. O backend normaliza também strings numéricas, rejeita booleanos e números não finitos e verifica limites. Campos obrigatórios vazios permanecem pendentes; não recebem zero. A API de sensibilidade recebe as variações em uma lista JSON.
 
-## 6. Perfil da propriedade e origens
+## 6. Parâmetros complementares e origens
 
-Um perfil local guarda nome e até quatro campos: peso adulto, intervalo entre partos, alojamento e distância. São dados do usuário; nenhuma referência científica universal está habilitada. As referências em `data/nutritional_parameter_references.csv` continuam com `auto_fill=false`.
+Informe peso adulto, intervalo entre partos, alojamento e distância em **Animal → Parâmetros complementares**. Fase, paridade, peso atual, produção, composição do leite, condição corporal e gestação são dados individuais. Lactose e fósforo de processo são informados manualmente.
 
-Salvar o perfil ou **Preencher campos vazios** completa entradas vazias do animal e atualiza valores que ainda estão identificados na sessão como provenientes do perfil. Entradas individuais são preservadas. **Restaurar valor padrão** restaura explicitamente o valor disponível no perfil para um campo, inclusive sobre um valor individual. Editar o animal não altera o perfil. Remover o perfil mantém os dados atuais do animal. Uma falha de armazenamento impede a aplicação de um perfil não salvo.
-
-Fase, paridade, peso atual, produção, composição do leite, condição corporal e gestação permanecem individuais. Lactose e fósforo de processo continuam entradas manuais quando ausentes; não recebem valores Guelph.
-
-Os complementares identificam Informado, Perfil da propriedade, Calculado ou Pendente. Valores aplicados do perfil mostram seu nome durante a sessão. O resumo conta todos os complementares preenchidos, informa entre parênteses quantos são automáticos e separa os pendentes dos calculados na formulação. Um campo manual válido conta como preenchido. Esses contadores se referem aos oito complementares; não dispensam os demais dados individuais necessários à análise.
-
-O perfil salvo é aplicado aos campos assim que lido, antes da biblioteca de ingredientes responder. Sem perfil ou com falha de leitura/validação, a interface informa a situação e permite abrir sua configuração. **Configurar perfil** copia somente valores reutilizáveis válidos já informados no animal para campos ainda vazios do editor; é preciso informar o nome real e salvar. Não substitui edições em andamento no editor e não cria parâmetros presumidos.
-
-Ao restaurar uma configuração, valores preenchidos têm prioridade e sua origem específica não é inferida pela igualdade numérica. Campos reutilizáveis vazios são completados pelo perfil salvo, inclusive ao carregar cenários antigos ou registros CSV. Cenários nomeados e snapshots antigos não preservam a origem histórica desses valores, que reaparecem como Informado. O trabalho automático de esquema 2 preserva as origens registradas do perfil quando ainda correspondem ao perfil disponível; não as infere apenas pela igualdade de números.
-
-O catálogo de referências foi novamente inspecionado neste refinamento: todos os registros continuam com `auto_fill=false`. Os números catalogados são exemplos sem aprovação para preenchimento individual. Não há valores exibidos como Referência nem uma ação de restauração de referência científica inexistente. A restauração disponível usa exclusivamente dados reais salvos pelo usuário no perfil.
+A interface indica quais parâmetros foram informados, calculados ou estão pendentes. Se a FDN for deixada em branco, o cálculo usa a composição da dieta atual para avaliar seu contexto quando disponível e a composição da dieta candidata durante a formulação. Os números catalogados em `data/nutritional_parameter_references.csv` são exemplos e continuam com `auto_fill=false`.
 
 Os CSV de perfis internos do backend contêm alguns valores de referência antigos usados como fallback quando uma chave é omitida na API. O formulário envia explicitamente seus campos, inclusive `null` nos vazios, e não usa esse fallback como preenchimento científico automático. Clientes diretos da API devem informar todos os parâmetros necessários e não interpretar esses perfis internos como recomendações.
 
-## 7. Importação CSV
+## 7. Catálogos e entrada de dados
 
-Baixe na aba Animal os modelos `data/templates/animals.csv` e `data/templates/property.csv`. Contêm apenas cabeçalhos, sem dados fictícios. Use UTF-8 com BOM opcional e selecione explicitamente `;` ou `,` como separador. Os modelos usam `;`. Com separador de coluna `,`, decimais com vírgula precisam de aspas CSV.
-
-Cabeçalho da propriedade:
-
-```text
-property_name;mature_body_weight;calving_interval;housing;distance
-```
-
-Nome e ao menos um parâmetro são obrigatórios. Os demais campos podem ficar vazios. Cabeçalho das vacas:
-
-```text
-animal_id;animal_category;lactation_subcategory;body_weight_kg;days_in_milk;milk_production;milk_fat;milk_true_protein;pregnant;day_of_pregnancy;body_condition_score_5;milk_lactose;process_based_phosphorus_requirement;mature_body_weight;calving_interval;housing;distance
-```
-
-`animal_id` é texto e preserva zeros à esquerda. Categoria usa os dois identificadores da seção 1; fase usa os quatro identificadores estáveis. `pregnant` aceita `true`/`false`: dia de gestação é obrigatório no primeiro caso e vazio no segundo. Os quatro campos reutilizáveis podem ficar vazios no arquivo animal, mantendo os valores atuais. Os demais dados individuais são obrigatórios.
-
-A ordem das colunas pode mudar; seus nomes não podem mudar, repetir ou incluir colunas extras. Limites: 256 KiB, 500 registros e até 100 erros apresentados por tentativa. IDs e nomes precisam ser únicos, sem diferenciar maiúsculas/minúsculas. Arquivo inválido é bloqueado integralmente, com linha física, coluna e motivo.
-
-**Validar e visualizar** não altera o formulário. Selecione um registro, compare Atual/CSV e confirme para aplicar. Se os dados atuais mudarem desde a prévia, é necessária nova revisão. Importar uma vaca mantém dieta, emissões explícitas, ingredientes e preços; revise sua compatibilidade. Importar uma propriedade substitui seu perfil e editor, mantendo o animal. Não existe processamento em lote, importação genérica JSON ou exportação CSV de resultados. `POST /api/csv-preview` valida sem guardar o arquivo no servidor.
+O produtor informa os dados pelo formulário. Os serviços locais leem os catálogos distribuídos de composição, preços, referências e perfis nutricionais internos.
 
 ## 8. Exigências nutricionais
 
@@ -113,23 +86,41 @@ FDN, FDN de forragem e gordura são restrições da ração. Não são apresenta
 
 ## 9. Ingredientes e matéria seca
 
-A composição vem de `../input/data/feed/NASEM_Comp_with_TDN.csv`, selecionada pelo ID RuFaS exato. Traduções alteram apenas o nome exibido. A composição catalogada não substitui análise do alimento real.
+O catálogo personalizado expõe 175 alimentos, incluindo os que ficam fora dos grupos de lactantes. Os grupos e o conjunto automático mantêm o recorte de ingredientes recomendado. A composição vem de `../input/data/feed/NASEM_Comp_with_TDN.csv`, selecionada pelo ID RuFaS exato. Traduções alteram apenas o nome exibido. A composição catalogada não substitui análise do alimento real.
 
 Para quantidade `xᵢ` em kg MS/dia e fração de MS `dᵢ = DMᵢ/100`, a quantidade natural é `xᵢ/dᵢ`. Para um nutriente informado em % MS, a soma direta é `Σ xᵢ·aᵢ/100`, em kg/dia. A FDN dietética é `100·FDN_kg/Σxᵢ`.
 
-Essas somas descrevem composição bruta. Proteína metabolizável, energia e minerais digestíveis usam os métodos nativos de aproveitamento, não apenas percentuais. Os totais brutos de cálcio/fósforo exibidos em kg/dia não são diretamente comparáveis às exigências digestíveis em g/dia.
+Essas somas descrevem composição bruta. Proteína metabolizável, energia e minerais digestíveis usam os métodos nativos de aproveitamento, não apenas percentuais. Os totais brutos de cálcio e fósforo ficam disponíveis na API em kg/dia. As verificações nutricionais usam a oferta digestível em g/dia.
 
-## 10. Formulação de menor custo
+## 10. Modelo matemático, solver e restrições
 
-O custo é `min Σ cᵢxᵢ`, com `cᵢ = preço_naturalᵢ/dᵢ`. Cada `xᵢ` está entre seus limites de inclusão em kg MS/dia. O otimizador nativo `RationOptimizer` usa `scipy.optimize.minimize(method="SLSQP")`. A função objetivo é linear nos preços, mas as restrições NASEM tornam o problema não linear.
+Cada `xᵢ` é a quantidade de um ingrediente em kg de matéria seca por animal/dia, limitada por `lᵢ ≤ xᵢ ≤ uᵢ`. O custo diário é `min C(x) = Σᵢ (pᵢ/dᵢ) xᵢ`, com `pᵢ` em moeda por kg natural e `dᵢ` como fração de matéria seca. Logo, `pᵢ/dᵢ` é o custo por kg MS e `xᵢ/dᵢ` é a quantidade em kg natural. O preço deve usar uma moeda compatível entre os ingredientes. A seleção manual da interface usa limites iniciais de 0 a 10 kg MS/dia por ingrediente. O conjunto recomendado usa limites do catálogo, com 0 e 100 kg MS/dia para os respectivos valores ausentes. O custo é linear nas quantidades. As relações de oferta nutricional e de participação na dieta tornam o problema não linear.
 
-São selecionadas onze restrições: cálcio, fósforo, proteína metabolizável mínima/máxima, FDN mínima/máxima, FDN de forragem, gordura máxima, consumo mínimo/máximo e energia líquida NASEM. Coeficientes e limites permanecem nos métodos/constantes nativos, sem reescrita científica no frontend.
+O motor de formulação é o `RationOptimizer` do RuFaS. O cálculo nutricional usa as relações do NASEM 2021 integradas ao RuFaS. O otimizador chama `scipy.optimize.minimize` com `method="SLSQP"`, a função de custo, uma dieta inicial, os limites e as restrições. O método **Sequential Least Squares Programming** ajusta as quantidades por aproximações quadráticas sucessivas e lida com restrições não lineares. No NutriPlan, o ponto inicial é determinístico e depende dos limites e do consumo estimado.
 
-O adaptador verifica o sucesso do solver, recalcula todas as folgas (tolerância absoluta `1e-4` nas unidades de cada restrição), confirma limites de inclusão e reconcilia o custo com as quantidades. Uma folga não negativa atende à desigualdade; resultados fora da tolerância são bloqueados. Sucesso numérico não prova mínimo global, segurança biológica ou desempenho produtivo.
+A chamada usa os padrões do SciPy para `maxiter=100` e `ftol=1e-6`. Esse critério de precisão considera o gradiente da Lagrangiana, as violações de restrições, o tamanho do passo e a mudança no custo. A verificação posterior exige sucesso do solver, folgas finitas maiores ou iguais a `-1e-4` nas unidades de cada restrição, quantidades finitas de pelo menos `-1e-6` kg MS/dia e respeito aos limites de inclusão com tolerância de `1e-4` kg MS/dia. O custo recalculado deve coincidir com o valor do solver usando tolerâncias absoluta de `1e-4` e relativa de `1e-5`. Falhas de convergência, oferta insuficiente e limites incompatíveis podem impedir a formulação. A convergência indica uma solução local cujas restrições devem ser conferidas. [Documentação do SLSQP no SciPy](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html)
+
+Cada linha abaixo é uma desigualdade com folga nominal maior ou igual a zero. Os limites individuais de inclusão são separados dessas onze restrições.
+
+| Restrição | Unidade | Condição e origem |
+| --- | --- | --- |
+| Consumo mínimo | kg MS/dia | Soma de quantidades ≥ 70% do consumo estimado pelo NASEM. |
+| Consumo máximo | kg MS/dia | Soma de quantidades ≤ 130% do consumo de referência usado na inicialização. A margem de 30% em torno da estimativa vem do RuFaS. |
+| Energia líquida | Mcal/dia | Oferta líquida depois das perdas ≥ exigência total NASEM. |
+| Proteína metabolizável mínima | g/dia | Oferta nativa ≥ exigência NASEM, que depende da FDN. |
+| Proteína metabolizável máxima | g/dia | Oferta nativa ≤ 1,5 vez a exigência de referência. O modo com FDN candidata usa a exigência recalculada para a candidata nos dois limites. |
+| FDN total mínima | % da MS total | FDN ≥ 25%, limite do RuFaS. |
+| FDN total máxima | % da MS total | FDN ≤ 45%, limite do RuFaS. |
+| FDN de forragem mínima | % da MS total | FDN das forragens ≥ 15% do total de MS, limite do RuFaS. |
+| Gordura máxima | % da MS total | Extrato etéreo ≤ 7%, limite do RuFaS. |
+| Cálcio mínimo | g/dia | Oferta digestível calculada pelo RuFaS ≥ exigência NASEM de cálcio. |
+| Fósforo mínimo | g/dia | Oferta digestível calculada pelo RuFaS ≥ o maior valor entre a exigência NASEM e o fósforo de processo informado. |
+
+Os métodos nativos para oferta digestível de cálcio e fósforo referenciam NRC 2001. Proteína bruta e amido entram na composição e em cálculos dietéticos, sem desigualdades próprias neste fluxo. Aminoácidos também ficam fora do conjunto de restrições ativas.
 
 ## 11. Emissões e energia da dieta candidata
 
-Sem dieta anterior e sem FDN/emissões explícitas, `CandidateRationOptimizer` reutiliza as funções nativas por dieta candidata. A FDN vem da combinação dos alimentos; metano vem da rota IPCC para vacas lactantes de `EntericMethaneCalculator`; nitrogênio urinário vem de `ManureExcretionCalculator.calculate_cow_manure`.
+Com os dois campos de emissões vazios, `CandidateRationOptimizer` aplica as funções nativas a cada dieta candidata. O metano vem da rota IPCC para vacas lactantes de `EntericMethaneCalculator`. O nitrogênio urinário vem de `ManureExcretionCalculator.calculate_cow_manure`. O metano depende do consumo e da energia bruta estimada da composição. A rota de nitrogênio urinário usa a diferença entre nitrogênio total do esterco e nitrogênio fecal, com o piso da equação nativa de 0,022 kg/dia. Nessa rota, as quantidades de nitrogênio dependem do consumo e da proteína bruta. Com dieta atual, o cálculo da exigência proteica usa a FDN dessa dieta e rejeita uma entrada manual divergente. Sem dieta atual, uma FDN manual é aceita. Quando ambas estão ausentes, o modelo recalcula a FDN e a exigência proteica de cada candidata.
 
 Essas duas rotas selecionadas não dependem de energia metabolizável previamente calculada. Campos energéticos indisponíveis são sinalizados como não disponíveis internamente, e não preenchidos como emissões zero. Não são usados parâmetros lactantes para habilitar novilhas.
 
@@ -137,145 +128,76 @@ Essas duas rotas selecionadas não dependem de energia metabolizável previament
 
 O docstring nativo desses métodos menciona Mcal/kg, mas as operações somam energia das quantidades diárias e o otimizador compara o resultado com a exigência total diária. Esta documentação explicita a base diária efetivamente usada; não altera o código científico.
 
-O ponto inicial é determinístico e baseado nos limites/consumo nativo. Não há um laço externo que alterna entre dietas anteriores; as dependências são avaliadas dentro das restrições. A reavaliação final usa a própria solução.
+As dependências da candidata são avaliadas dentro das restrições. A reavaliação final usa a própria solução.
 
-Após sucesso, a FDN e as emissões calculadas são apresentadas nos respectivos campos, com origem Calculado e indicação de dieta candidata/anterior. A FDN da dieta anterior também pode aparecer na prévia de exigências quando o backend já a resolveu. Não há número exibido antes de existir uma derivação válida. Uma entrada explícita existente não é substituída.
+Após sucesso, a API de formulação retorna os valores em g/dia para metano e kg/dia para nitrogênio urinário com a origem da estimativa. Os campos manuais continuam vazios no modo automático. Na aba Animal, a FDN derivada pode aparecer com a indicação de dieta candidata ou anterior. Ela é recalculada quando as entradas mudam.
 
-Os valores automáticos são apenas apresentação de uma derivação: o payload e os cenários continuam com FDN `null` e emissões vazias nesse modo. A próxima formulação recalcula as dependências, sem congelar emissões anteriores nem aplicar perdas novamente. Alterar uma entrada invalida/limpa valores derivados; a FDN de uma dieta anterior válida é atualizada pela rota existente. Editar um campo calculado converte aquele campo em entrada explícita, sujeita às mesmas validações e exigência de fonte já existentes. Parâmetros fisiológicos manuais não são alterados pela troca de fase.
+Dois valores manuais finitos e não negativos substituem as estimativas, inclusive com dieta anterior ou FDN manual. Para formular, preencha ambos os campos ou deixe os dois vazios.
 
-Dieta anterior opcional mantém o caminho legado: sua composição deriva FDN e emissões, que representam esse contexto anterior. Valores explícitos exigem os dois parâmetros de emissão e fonte; não podem ser combinados com dieta anterior. FDN manual sem dieta anterior exige emissões explícitas. Misturar contextos incompatíveis é rejeitado. A opção avançada não é recomendação de valores fixos.
+O modelo automático requer dados fisiológicos e dietéticos compatíveis. O código RuFaS consultado oferece equações dependentes desses dados e coeficientes para seu cálculo. A ausência de uma estimativa aplicável produz uma falha de cálculo.
 
 Isso não executa a simulação completa de um lote `Pen`, suas transições diárias ou todos os módulos ambientais do RuFaS. As emissões são estimativas dos caminhos selecionados, não medições nem validação ambiental integral.
 
-## 12. Interpretação e sensibilidade
+## 12. Interpretação, comparação e sensibilidade
 
-A dieta informa kg MS e kg natural por ingrediente, custo diário por animal, consumo, composição e atendimento das restrições. Leia as unidades e a origem dos preços. Valores sem moeda documentada aparecem como unidades monetárias, sem presumir reais. A projeção mensal multiplica por 30; não estima lucro ou resposta de leite.
+A aba Resultados mostra custo por animal/dia, consumo de matéria seca, meta de leite e composição em kg MS e matéria natural. A resposta da API inclui a adequação das onze restrições, suas folgas e os totais de composição. A moeda deriva dos registros de preços. Uma cotação legada sem moeda permanece em unidades monetárias.
 
-Energia líquida e proteína metabolizável aparecem nas exigências e no diagnóstico de restrições; os totais de composição não são uma análise completa de sua oferta aproveitável. A sensibilidade repete otimizações variando o preço selecionado e apresenta viabilidade/custo por experimento; não mede resposta biológica e não substitui o resultado-base.
+O comparador usa as quantidades próprias de cada dieta e os métodos nativos do otimizador para energia líquida (Mcal/dia) e proteína metabolizável (g/dia). Soma o consumo e a FDN em kg/dia. Ambas usam o mesmo contexto fisiológico e as mesmas exigências de referência. No modo automático, cada dieta fornece suas próprias perdas energéticas. No modo manual, ambas usam o par informado. A diferença é a dieta formulada menos a atual. Zero numa coluna de quantidade indica inclusão ou retirada. Valores nutricionais indisponíveis aparecem como travessão. O número de restrições satisfeitas usa a tolerância da verificação final.
 
-A comparação com dieta anterior só faz sentido com preços elegíveis, unidades, datas, local e fontes compatíveis. Ausência dessa base não invalida automaticamente a formulação nutricional. Falha do solver também não prova que nenhuma dieta viável exista: ingredientes, limites e ponto de partida podem impedir encontrá-la.
+Para comparar custos, o serviço aplica uma cotação atual por alimento às duas dietas. O preço simples editado na interface usa BRL/kg natural. Alimentos exclusivos da dieta anterior aceitam cotação atual própria. Os preços de catálogo requerem confirmação de atualidade. A ausência de preço ou moeda comum preserva a comparação nutricional e omite o custo comparado. As diferenças descrevem preços atuais. O endpoint econômico histórico permanece separado da interface principal.
 
-## 13. Persistência e compatibilidade
+A sensibilidade repete a formulação nativa para variações de preço ou disponibilidade de um ingrediente. Usa os dados da análise aberta e mantém fixa a produção informada na aba Animal. As variações são hipotéticas.
 
-Preferências, perfil e cenários ficam no navegador e na origem local da aplicação. O perfil usa `nutriplan.property.v1`; o trabalho atual e os cenários mantêm seus contratos versionados. Limpar dados do navegador ou usar outra porta pode tornar esses registros indisponíveis. Não há sincronização remota.
+## 13. Dados durante a análise
 
-### Salvamento automático privado
+Os valores preenchidos ficam disponíveis durante a navegação entre abas. Ao abrir ou recarregar, a aplicação inicia na aba Animal com o formulário vazio. Apenas idioma e tema persistem entre visitas.
 
-O trabalho atual usa a chave histórica `nutriplan.working.v1`, agora com **`schema_version: 2`** no conteúdo. A chave foi mantida para localizar configurações anteriores. O perfil aplicado permanece em `nutriplan.property.v1`; cenários nomeados ficam em `nutriplan.scenarios.v1`. Idioma e tema usam chaves próprias e não são removidos pelo controle de limpeza da formulação.
+## 14. Implementação e verificação
 
-São preservados fase, paridade, peso, todos os parâmetros fisiológicos/complementares, checkbox de gestação inclusive em edição incompleta, ingredientes por ID RuFaS, disponibilidade, limites de inclusão, preços e proveniência, dieta anterior e fonte, emissões explícitas e fonte, registros de preços importados e nome/descrição da configuração. O rascunho do editor da propriedade também é guardado, mesmo antes de salvar/aplicar o perfil. A ação **Salvar perfil** continua definindo o perfil reutilizável; editar seu rascunho não o transforma silenciosamente em entrada científica do animal.
+A exigência nutricional e a formulação são calculadas por serviços diferentes. Todos os fluxos que formulam uma dieta chegam ao mesmo adaptador `services/native_ration.optimize_native`, que chama `RationOptimizer.attempt_optimization` para NASEM.
 
-Os valores são guardados na representação informada, incluindo vírgula decimal e zeros finais. Texto numérico ainda incompleto pode ser restaurado como rascunho: não é convertido em zero nem declarado válido para otimização. Os parsers numéricos existentes continuam validando antes do cálculo. A origem de campos aplicados automaticamente pelo perfil é preservada quando corresponde ao perfil disponível. Valores calculados de FDN/emissões continuam excluídos das entradas explícitas persistidas, para serem recalculados pela dieta.
-
-Alterações são agrupadas por **400 ms** de inatividade. O estado é comparado ao último salvo, evitando gravar novamente apenas por navegar, trocar idioma ou renderizar resultados. `pagehide` e a transição da página para segundo plano fazem o salvamento final, incluindo a última edição. O estado do salvamento é mostrado abaixo das abas. Uma falha de acesso/quota é informada; o formulário permanece na tela e o snapshot anterior não é apagado.
-
-### Restauração e compatibilidade
-
-Ao abrir, o frontend lê e valida o snapshot local e aplica os campos, sem enviar a configuração à API de validação de cenários e sem executar otimização. A prévia nutricional segue utilizando o servidor local, como antes. A biblioteca fornece os nomes e a composição correspondentes aos IDs estáveis; o conteúdo pessoal não vira uma referência genérica nem um arquivo do projeto.
-
-A validação local verifica versão, identificação da aplicação, método, biblioteca, categorias/fases, estrutura de parâmetros, tipos, quantidade de ingredientes, IDs únicos/conhecidos e formato das fontes. O hash da biblioteca, quando disponível nas duas pontas, também participa da compatibilidade. Um snapshot antigo de versão 1 é adaptado em memória, sem sobrescrever o original durante a leitura; uma nova edição grava a versão 2.
-
-Snapshots corrompidos, de versão desconhecida ou incompatíveis são preservados na chave original. O salvamento fica pausado, com mensagem visível, para impedir que um formulário vazio substitua os dados. Se a incompatibilidade só for identificada após carregar a biblioteca, os campos já restaurados também permanecem disponíveis para revisão. Não existe reparação automática de JSON corrompido. Cenários nomeados corrompidos são mantidos e não são substituídos por uma lista vazia ao tentar salvar outro cenário.
-
-Resultados de otimização, diagnóstico antigo, valores do solver e respostas de sensibilidade não são persistidos. Ao abrir novamente, a interface informa que a configuração foi restaurada e exige novo cálculo. Com entradas e biblioteca compatíveis, basta acessar **Ingredientes e preços** e calcular; o sucesso continua abrindo **Resultados**. Alterações invalidam a análise anterior.
-
-### Controles locais
-
-Em **Animal → Dados neste navegador**:
-
-- **Restaurar última configuração** fica disponível quando há um snapshot compatível e alterações ainda não salvas. A restauração pede confirmação antes de descartar essas alterações. Não é um histórico de versões: após o salvamento automático, a última configuração é a edição atual.
-- **Limpar dados salvos** pede confirmação e remove somente as três chaves de formulação, perfil e cenários do NutriPlan. Mantém idioma, tema, outros armazenamentos e os campos atualmente na tela. O salvamento fica desativado para esses campos até uma nova edição, evitando recriar os dados apagados ao fechar a aba. Uma nova edição volta a salvá-los, conforme a mensagem exibida. Se houver falha na limpeza, o formulário é mantido e a aplicação tenta recompor as chaves já removidas.
-
-### Privacidade e limites
-
-Nenhuma configuração pessoal é adicionada ao código-fonte, CSVs, fixtures ou arquivos do projeto. O mecanismo de persistência não escreve no servidor, não cria conta/banco de dados e não envia dados a serviços externos. Os cálculos, prévias e operações de cenários solicitadas continuam usando as APIs locais existentes; esses envios para processamento local não são armazenamento remoto. Não são emitidos logs de conteúdo dos snapshots.
-
-`localStorage` permanece após recargas e encerramento normal do navegador no mesmo perfil, computador e origem. Trocar protocolo, `localhost`/`127.0.0.1`, porta, perfil ou navegador acessa outro armazenamento. Modo privado, bloqueio de armazenamento, limpeza dos dados do site, remoção do perfil e limites de quota podem impedir a retenção. O armazenamento não é um cofre criptografado nem uma cópia de segurança externa; quem tem acesso ao mesmo perfil/origem pode acessar esses dados.
-
-### Verificação da persistência
-
-A suíte atual contém **56 testes**, incluindo `tests/test_local_persistence.py`: debounce e salvamento final, snapshot completo, restauração sem requisições de validação/otimização, números com vírgula, gestação incompleta, rascunho da propriedade, migração da versão 1, proteção contra JSON corrompido/versão futura/ID desconhecido, erro de armazenamento, confirmação de limpeza/restauração e preservação das preferências. A otimização de configurações serializadas e restauradas foi comparada nas duas paridades, com custos reproduzidos e restrições atendidas. Os dados vêm exclusivamente do fixture científico já existente e de valores sintéticos; nenhuma configuração pessoal foi criada como fixture.
-
-No navegador isolado, todos os campos e cinco preços foram comparados antes/depois da recarga, incluindo a última edição. A dieta restaurada executou a otimização e atendeu às onze restrições. Fechar a aba e abrir uma nova no mesmo perfil restaurou a configuração e manteve o resultado antigo oculto. Limpar os dados manteve o formulário em uso; após recarga, os campos/ingredientes ficaram vazios e idioma/tema foram preservados. O encerramento/reinício do processo inteiro do navegador não é controlável pelas ferramentas desta sessão e não foi automatizado; o teste realizado foi fechamento/reabertura da aba com novo contexto JavaScript e o mesmo armazenamento persistente.
-
-Fases persistem por identificadores estáveis. Um cenário antigo sem fase mantém os valores fisiológicos e exige seleção manual, sem classificação automática por dias em lactação. Resultados não são restaurados como se fossem novos cálculos. Carregar cenário mantém a prioridade de seus valores preenchidos; lacunas reutilizáveis podem ser completadas pelo perfil da propriedade.
-
-## 14. Arquitetura e manutenção
-
-`index.html` concentra os controles, internacionalização e persistência; `styles.css` fornece tokens e temas. `server.py` serve a interface e as APIs locais. `services/numbers.py` centraliza números Python; `nutrition.py` valida perfis/exigências; `native_ration.py` integra a otimização; `emissions.py` resolve dependências dietéticas; `csv_import.py` valida importação. Preços, cenários, sensibilidade e comparação econômica permanecem em serviços próprios.
-
-O motor original fica em `../RUFAS/`. Atualizações do RuFaS exigem reexecutar regressões e revisar contratos, unidades, métodos privados reutilizados e critérios de restrição. A biblioteca de alimentos precisa corresponder à versão instalada. Não alterar equações para ajustar resultados esperados.
-
-## 15. Verificação da fase 15E
-
-Comando da suíte atual:
-
-```bash
-env -u DISPLAY MPLBACKEND=Agg MPLCONFIGDIR=/tmp/nutriplan-mpl PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.. ../venv/bin/python -m unittest discover -s tests -q
-```
-
-Resultado em 13/11/2026: **32 testes aprovados**. Incluem números e proteína do leite, ambas as paridades, emissões pela dieta candidata, reconciliação energética, custos anteriores à fase 15A, Guelph do manifesto retido, cenários/sensibilidade, perfil, CSV/backend e navegação sem cálculo.
-
-No navegador real foram verificados CSV inválido e válido, prévia/seleção/confirmação, duas paridades sem dieta anterior nem emissões manuais (11/11 restrições em cada execução), PT/EN, sensibilidade com cinco variações viáveis, abas, temas claro/escuro/automático e largura móvel de 390 px. Os custos com os limites padrão da interface diferem dos limites específicos do fixture; não são uma nova referência científica.
-
-Os dados Guelph de `data/reference_rations.json` e `data/experimental_validation_manifest.json` continuam referências computacionais internas. Não existe botão de preenchimento demonstrativo. Regressão preservada comprova comportamento computacional nesse caso, sem equivaler a validação biológica independente.
-
-Os documentos históricos e a suíte antiga de 96 testes não estavam presentes nesta cópia ao retomar a fase 15. Não foram reconstruídos como se fossem evidências executadas. O número acima se refere à suíte atual disponível e complementada; a recuperação desses arquivos depende de uma cópia confiável.
-
-## 16. Limitações e critérios de uso
-
-Exigir entradas fisiológicas reais, composição representativa, preços válidos e revisão profissional das quantidades. Não interpretar nenhuma classificação de fase como prescrição. A aplicação não cobre todos os nutrientes, aminoácidos, respostas produtivas, manejo de lote, variações individuais ou todas as categorias animais possíveis do RuFaS.
-
-Valores derivados são estimativas. Não há referência automática universal aprovada para preencher campos ausentes. A viabilidade matemática, as regressões computacionais e a validação biológica são evidências diferentes e precisam permanecer separadas.
-
-### Verificação adicional da etapa 16D
-
-A tela Metodologia usa o mesmo sistema PT/EN e tokens de tema da aplicação, sem nova dependência, API ou alteração científica. As âncoras `#methodology-science`, `animal`, `requirements`, `feeds`, `optimization`, `energy`, `results` e `references` (todas com o prefixo `methodology-`) selecionam a aba correspondente e posicionam o foco na seção. Outros fragmentos não selecionam essa aba.
-
-Os testes novos verificam as oito seções/links, ausência de campos de entrada na Metodologia, tradução de todos os seus textos visíveis e retorno PT→EN→PT, além de navegação por fragmento sem requisição de cálculo. O teste de abas foi ampliado para a quarta aba. A suíte atual passou com **34 testes**, incluindo as regressões nutricionais anteriores. Foram mantidas as equações, APIs e resultados do motor.
-
-No navegador, a navegação entre Resultados e Metodologia, a troca PT/EN e a navegação interna preservaram exatamente os valores dos controles, o custo e o texto das onze restrições da execução anterior. O acesso direto a `#methodology-energy` selecionou a aba e posicionou o foco na seção. Foram inspecionados os temas claro/escuro/automático e a largura móvel de 390 px, com abas em duas linhas e largura do documento de 375 px, sem transbordamento horizontal. Não houve erros ou avisos no console na sessão final.
-
-### Refinamento de valores e fluxo de otimização — 13/11/2026
-
-O botão único passou para o final de Ingredientes e preços. A validação reutiliza os parsers e o backend existentes, acrescentando contexto de aba/campo aos erros. A API científica, os serviços de produção e o RuFaS não foram modificados. O perfil agora completa lacunas também na restauração, mantendo entradas individuais e mostrando valores derivados conhecidos nos controles.
-
-A suíte atual contém **41 testes**. Os novos casos cobrem solicitação única durante processamento, abertura de Resultados somente após sucesso, foco no animal quando a validação falha, erro do solver sem resultados antigos, descarte de resposta após edição e mensagem clara em falha de conexão. Foram ampliados os testes do perfil para atualização de valores automáticos sem substituir os manuais, exposição dos derivados e exclusão destes das entradas explícitas. As regressões científicas retidas continuam incluídas.
-
-No navegador foram exercitados o estado vazio, perfil com quatro campos, edição/restauração, troca de fases e paridade, gestação, persistência com campo vazio e campo manual, preços ausentes e proteína inválida. As duas paridades formularam sem dieta anterior nem emissões manuais, com onze restrições atendidas; repetir a multípara preservou o custo. Um conjunto sem ingredientes suficientes para atender ao modelo produziu falha segura do solver, permanecendo em Ingredientes e ocultando a análise anterior. As quantias usadas nesses testes pertencem ao caso de regressão, sem serem padrões de preenchimento do produto.
-
-PT/EN e temas claro, escuro e automático foram verificados. Nas larguras de 1440, 1024, 768 e 390 px, a largura do documento permaneceu abaixo da viewport; o botão ficou ao final da tabela, com largura adaptada no celular. A sessão final não apresentou erros ou avisos no console. Uma interrupção do servidor temporário durante a revisão também demonstrou a preservação dos campos sem reexibir resultados; a mensagem de conexão foi corrigida e recebeu regressão automatizada. A execução final com os dados restaurados voltou a atender às onze restrições.
-
-### Correção do carregamento dos valores reutilizáveis — 13/11/2026
-
-Foi rastreado o fluxo `loadPropertyProfile` → `applyPropertyProfile` → inputs → `collectProfileParameters` → validação de `services/nutrition.py`. O diagnóstico distingue ausência de dados de falha de carregamento:
-
-| Hipótese | Evidência e conclusão |
+| Rota | Serviço e papel |
 | --- | --- |
-| Catálogo sem números utilizáveis | `data/nutritional_parameter_references.csv` tem quatro candidatos numéricos e um candidato categórico, mas todos os registros têm `auto_fill=false`. Os candidatos são exemplos ou não possuem validação aplicável. Não existe referência aprovada para preencher o formulário. |
-| Nenhum perfil configurado | Não há perfil de propriedade pré-configurado. O perfil real fica em `localStorage`, chave `nutriplan.property.v1`, por navegador e origem (protocolo, host e porta). Uma origem sem esse registro reproduziu o estado de sete pendências. O servidor não permite confirmar se existe um perfil no navegador particular do relato; não foi presumida sua ausência. |
-| Valores salvos não chegavam imediatamente ao animal | O carregador lia o perfil e preenchia apenas seu editor. A aplicação ao animal ficava na continuação de `fetch('/api/nasem-feeds')`. Uma resposta demorada ou falha dessa requisição deixava campos reutilizáveis vazios mesmo com perfil válido. Um teste antes da correção confirmou intervalo, alojamento e distância vazios após carregar um perfil que os continha. |
-| Mecanismo desconectado dos inputs | A função de aplicação já escrevia nos inputs corretos e preservava campos manuais. O defeito estava na ordem de inicialização. Agora `loadPropertyProfile` aplica o perfil validado imediatamente, sem depender dos ingredientes nem executar otimização. |
-| Critérios por animal impedindo preenchimento | Os quatro campos do perfil são dados fornecidos pelo usuário para a propriedade e não têm filtro oculto por fase/paridade. As duas paridades usam os caminhos lactantes existentes. Os exemplos do catálogo mencionam condições como Holstein/freestall, mas continuam não aprovados; selecionar fase/paridade não os torna referências aplicáveis. |
+| `GET /api/health` | Diagnóstico do motor RuFaS e identificação do solver SLSQP e da biblioteca SciPy. |
+| `GET /api/animal-categories`, `GET /api/nasem-feeds` | Categorias habilitadas e catálogo de alimentos. |
+| `POST /api/nutritional-requirements` | `services/nutrition.calculate` calcula as exigências. |
+| `POST /api/rufas-native` | `services/milk_targets.formulate` delega ao adaptador nativo. A entrada deve identificar a categoria animal. |
+| `POST /api/sensitivity-analysis` | `services/sensitivity.run_sensitivity` recebe `configuration` com os dados da formulação, além de `mode`, `rufas_id` e `variations`. Cada experimento chama o adaptador nativo para a mesma meta. |
+| `POST /api/economic-comparison` | `services/economic_comparison.compare_diets_economically` avalia custos de dietas fornecidas. |
 
-O contador antigo destacava apenas aplicações automáticas: sete campos manuais válidos ainda produziam “0 automáticos”. O resumo corrigido mostra, por exemplo, `7 preenchidos (0 automáticos) · 0 pendentes · 1 calculado na formulação`. Sem qualquer fonte válida, continua mostrando sete pendências, acompanhado da explicação de perfil/referências ausentes. Um perfil completo em uma análise vazia produz quatro preenchidos automáticos, três pendências individuais e FDN calculada na formulação.
+O comparador é executado durante a formulação e retornado pela API e usa `services/diet_comparison.compare_rations` para avaliar quantidades já definidas, com funções nativas de oferta e restrições. A interface apresenta nomes em português ou inglês.
 
-| Parâmetros | Fonte efetivamente permitida | Comportamento |
-| --- | --- | --- |
-| Peso adulto, intervalo entre partos, alojamento e distância | Perfil real salvo pelo usuário neste navegador/endereço | Aparecem nos próprios campos ao carregar e reutilizar o perfil. Edições individuais têm prioridade. Restaurar usa o valor salvo verificável. |
-| FDN dietética | Dieta anterior válida ou dieta candidata, pelos métodos nativos já integrados | O valor derivado conhecido é exibido; antes de existir a dieta necessária, não recebe número presumido. |
-| Metano e N urinário | Caminhos nativos de emissões já existentes | Permanecem derivados da dieta no modo automático; apresentação e exclusão dos valores automáticos do payload explícito foram preservadas. |
-| Escore corporal e lactose | Informação individual do usuário | Não há referência individual aprovada no catálogo. Permanecem pendentes quando ausentes. |
-| Fósforo do módulo de processo | Dado fornecido com fundamento ou saída aplicável do módulo de processo | O formulário atual não fornece o estado necessário para derivação autônoma; não foi inserido zero nem um valor do fixture. |
+Os testes usam o caso interno Guelph de `data/reference_rations.json` e o conjunto de candidatos do manifesto experimental. Com primípara, dieta anterior e os mesmos parâmetros do ensaio histórico, a referência é 26,425466 unidades monetárias/animal/dia e 21,902898 kg MS/dia. Para reproduzir também a margem de energia histórica, o teste usa como entradas manuais o metano e o nitrogênio urinário daquele ensaio. Esse valor econômico pertence aos preços do caso. O teste de navegador reproduz o caso Guelph pela interface com os limites históricos e a API local. Os comandos de execução estão no [README](README.md).
 
-A hierarquia preserva dado individual editado, perfil salvo, derivação nativa e, somente se houvesse uma aprovada, referência aplicável. Não foram criados números por fase, referências por raça ou novos cálculos. O backend continua tratando `null` explícito como dado ausente, sem substituir pelos valores de exemplo dos perfis internos. Não há restauração de referência científica oferecida quando tal referência não existe; a restauração disponível identifica o perfil do usuário como origem.
+A Fase 17.1 começou com dez testes Python descobertos e um roteiro de navegador separado. O manifesto experimental registra execuções antigas de 64 e 75 testes com descoberta em `tests/`. O material histórico cita uma execução de 94 e módulos específicos de nutrição, preços, sensibilidade e regressão por HTTP. Esses arquivos estavam ausentes da cópia local na abertura da Fase 17. A evidência disponível não identifica a operação que os retirou ou os 94 casos individualmente.
 
-Verificação: **45 testes aprovados** pelo comando da seção 15, incluindo novos casos para aplicação imediata do perfil, contagem de valores manuais nos dois idiomas, diagnóstico sem perfil, indicação de perfil inválido e preservação de ausências no backend nas duas paridades. As regressões anteriores de custos, exigências, energia, emissões e restrições continuaram aprovadas.
+A suíte atual reúne quinze testes de serviços e de regressão e vinte e sete testes HTTP. O caso Guelph e os dados de entrada são compartilhados. Os testes HTTP exercitam o servidor real com porta temporária, as unidades nutricionais, as emissões, as metas, a comparação e a sensibilidade. O roteiro de navegador verifica idiomas, temas, tamanhos de tela, falhas, navegação com os dados em edição e o reinício do formulário após recarregar. Ele também confirma que os dados antigos no armazenamento do navegador são preservados.
 
-No navegador isolado, foi verificado configurar o perfil a partir de valores manuais reais do formulário, salvar, carregar, editar, preservar edição nas trocas de paridade/fase e restaurar o valor salvo. Uma falha HTTP 503 deliberada somente no servidor temporário de teste impediu o carregamento dos ingredientes; ainda assim, os quatro valores salvos apareceram no animal com sua origem. O servidor de produção não foi alterado. Foram conferidos PT/EN, temas claro/escuro e a indicação de campos efetivamente sem referência. Valores usados nesses testes não são padrões distribuídos com a aplicação.
+Para reproduzir a suíte do simulador nesta revisão, use **pytest 9.0.3**. Uma execução completa anterior registrou 7.311 aprovações e 69 avisos. No pytest 9.2.0, os quatro testes de `_build_bounds_user_defined_ration` encontram um `TypeError` ao construir `pytest.approx` para uma lista de tuplas, antes da comparação dos limites. A incompatibilidade está na asserção da suíte do simulador. O comando do README para a aplicação usa `unittest`.
 
-## 17. Referências verificadas
+## 15. Limitações e evidência
 
-- National Academies of Sciences, Engineering, and Medicine. 2021. *Nutrient Requirements of Dairy Cattle: Eighth Revised Edition*. National Academies Press. [DOI 10.17226/25806](https://doi.org/10.17226/25806); [texto publicado no NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK600603/).
-- RuFaS — Ruminant Farm Systems: [repositório oficial](https://github.com/RuminantFarmSystems/RuFaS) e [documentação oficial](https://ruminantfarmsystems.github.io/RuFaS/). A descrição desta integração é fundamentada na cópia instalada, não presume funcionalidades de versões futuras.
+O manifesto experimental preserva o estudo IFG de Daniel Brandão Silva Brito como referência histórica independente de programação linear. Seu método e seus resultados publicados ficam registrados como evidência bibliográfica e não participam de nenhuma rota de formulação. [Manifesto experimental](data/experimental_validation_manifest.json)
+
+A formulação cobre os dois perfis lactantes habilitados, as restrições nativas e as composições catalogadas. Inputs do animal, análise real dos alimentos e representatividade dos preços limitam o uso em campo. Curvas de lactação, disponibilidade física por período, lucro, validação biológica externa e resposta produtiva individual exigem informações adicionais.
+
+## 16. Referências
+
+- National Academies of Sciences, Engineering, and Medicine. 2021. *Nutrient Requirements of Dairy Cattle: Eighth Revised Edition*. National Academies Press. [DOI 10.17226/25806](https://doi.org/10.17226/25806) · [NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK600603/)
+- National Research Council. 2001. *Nutrient Requirements of Dairy Cattle: Seventh Revised Edition*. Referência dos métodos de oferta mineral citada no código do RuFaS. [DOI 10.17226/9825](https://doi.org/10.17226/9825)
+- RuFaS — Ruminant Farm Systems. A descrição da integração usa o código da cópia instalada. [Repositório oficial](https://github.com/RuminantFarmSystems/RuFaS) · [Documentação oficial](https://ruminantfarmsystems.github.io/RuFaS/)
+- IPCC. 2006. *Guidelines for National Greenhouse Gas Inventories*, volume 4, capítulo 10. Referência citada pelo cálculo nativo de metano. [IPCC](https://www.ipcc-nggip.iges.or.jp/public/2006gl/vol4.html)
+- SciPy. Parâmetros e critério de parada do SLSQP. [Manual do SciPy](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html)
 - Evidência local: `RUFAS/biophysical/animal/nutrients/nasem_requirements_calculator.py`, `nutrition_supply_calculator.py`, `ration/ration_optimizer.py`, `digestive_system/enteric_methane_calculator.py`, `digestive_system/manure_excretion_calculator.py` e os serviços/testes descritos acima, todos relativos à raiz correspondente.
+
+## 17. Formulação por metas de leite
+
+**Calcular dieta otimizada** envia uma requisição a `POST /api/rufas-native` com `evaluate_milk_targets: true`. O backend avalia a produção informada e, quando a referência pode ser avaliada, testa até sete metas superiores em passos de 1 kg de leite por animal/dia. O intervalo e a resolução limitam o custo computacional a oito chamadas ao SLSQP. As restrições de ingestão, energia, proteína, minerais e inclusão de cada ingrediente avaliam a compatibilidade fisiológica de cada meta. O intervalo da busca não representa um limite fisiológico individual.
+
+Cada tentativa usa os mesmos dados do animal, preços e ingredientes, recalcula as exigências para sua meta de leite e minimiza `Σ xᵢ pᵢ / dᵢ`. A variável `xᵢ` representa kg MS por animal/dia, `pᵢ` é o preço por kg natural e `dᵢ` é a fração de matéria seca. A dieta só é aceita após sucesso do solver e conferência das restrições, dos limites e do custo. Em caso de falha, a resposta da API conserva o estado da tentativa e o código do solver quando disponível. Falhas de estimativa de emissões ficam registradas na tentativa correspondente, e as outras metas continuam sendo avaliadas.
+
+A resposta identifica `reference_result`, `highest_feasible_result` e `target_results`. Cada tentativa bem-sucedida guarda custo, consumo, composição em kg MS e kg natural, e a contagem das restrições atendidas. Os contratos de API para uma meta fixa ou uma lista explícita de metas continuam disponíveis a outros consumidores. A sensibilidade usa a produção informada para isolar o efeito da variação escolhida.
+
+Uma alternativa é **não dominada** se nenhuma outra solução viável testada tem custo igual ou menor e meta igual ou maior com pelo menos uma melhoria estrita. A interface apresenta a dieta da meta informada e destaca a maior meta viável entre as metas testadas. Se somente uma meta superior tiver solução, ela passa a ser a solução principal exibida. Quando as quantidades por ingrediente coincidem, o painel usa uma única coluna de composição. Uma meta maior pode exigir gasto adicional. A escolha de um compromisso econômico exige uma regra, como o preço marginal recebido pelo leite ou um orçamento informado.
+
+A análise calcula dietas de custo local para um conjunto discreto de metas. A produção observada depende da curva de lactação, do histórico individual e do manejo. Uma falha indica que a execução ficou sem solução encontrada. [Critérios do SLSQP no SciPy](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html)

@@ -61,9 +61,16 @@ def calculate_previous_ration_emissions(previous_ration, library, animal, build_
     return emissions
 
 
+class CandidateEmissionEstimationError(ValueError):
+    """A candidate lies outside the domain of the automatic emission calculations."""
+
+
 def calculate_candidate_ration_emissions(feeds, animal):
     """Apply the same native lactating-cow emission methods to a candidate ration."""
-    emissions = calculate_ration_emissions(feeds, animal)
+    try:
+        emissions = calculate_ration_emissions(feeds, animal)
+    except (ValueError, ArithmeticError) as error:
+        raise CandidateEmissionEstimationError('Automatic emission estimation failed.') from error
     emissions.update({
         'provenance': 'native_rufas_candidate_ration',
         'source_reference': 'RuFaS native candidate-feed calculation',
@@ -79,6 +86,8 @@ def calculate_candidate_ration_emissions(feeds, animal):
 def calculate_ration_emissions(feeds, animal):
     """Calculate FDN, IPCC methane and lactating-cow urinary nitrogen from native feed composition."""
     dry_matter = sum(item.amount for item in feeds)
+    if not math.isfinite(dry_matter) or dry_matter <= 0:
+        raise ValueError('Ration emissions require positive dry matter intake.')
     nutrients = {key: NutritionSupplyCalculator._calculate_nutritive_content(feeds, key)
                  for key in ('NDF', 'EE', 'CP', 'ADF', 'ash', 'potassium', 'starch')}
     wet_matter = sum(item.amount / (item.info.DM / 100) for item in feeds)

@@ -29,8 +29,8 @@ def parse_numeric_parameter(key, raw):
                          maximum=5 if key == 'body_condition_score_5' else
                          100 if key in {'milk_fat', 'milk_true_protein', 'milk_lactose', 'ndf_percentage'} else None,
                          integer=key in {'days_in_milk', 'day_of_pregnancy', 'calving_interval'})
-    if key == 'mature_body_weight' and value <= 0:
-        raise ValueError('mature_body_weight must be positive.')
+    if key in {'mature_body_weight', 'calving_interval'} and value <= 0:
+        raise ValueError(f'{key} must be positive.')
     return value
 
 
@@ -93,6 +93,9 @@ def calculate(payload, include_native=False):
             'missing_inputs': missing}
     if missing:
         return {**base, 'status': 'incomplete_input', 'requirements': {}, 'constraints': {}}
+    if math.fsum(values[key] for key in ('milk_fat', 'milk_true_protein', 'milk_lactose')) > 100 + 1e-9:
+        return {**base, 'status': 'invalid_input', 'error_code': 'invalid_milk_composition',
+                'requirements': {}, 'constraints': {}}
     try:
         result = NASEMRequirementsCalculator.calculate_requirements(
             body_weight=weight, mature_body_weight=values['mature_body_weight'],
@@ -126,6 +129,7 @@ def calculate(payload, include_native=False):
                     'reference': rule['reference'],
                     'status': 'requires_ration_configuration' if rule['nutrient'] == 'dry_matter' else
                               'preliminary_diet_dependent' if rule['nutrient'] == 'metabolizable_protein' else 'calculated'} for rule in rules}
+    constraints['phosphorus']['minimum'] = max(requirements['phosphorus'], result.process_based_phosphorus)
     response = {**base, 'status': 'success', 'constraints_status': 'partial', 'requirements': requirements, 'constraints': constraints}
     if include_native:
         response['_native_requirements'] = result

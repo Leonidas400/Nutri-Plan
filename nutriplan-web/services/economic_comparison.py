@@ -314,7 +314,7 @@ def compare_diets_economically(baseline_ration, optimized_ration, price_records,
         records_by_id = normalized
         def ration_cost(items):
             return sum(item['kg_dm_day'] / item['dm_fraction'] * records_by_id[item['rufas_id']]['price_as_fed']
-                       for item in items)
+                       for item in items if item['kg_dm_day'] > 0)
         baseline_cost = ration_cost(baseline)
         optimized_cost = ration_cost(optimized)
         difference = baseline_cost - optimized_cost

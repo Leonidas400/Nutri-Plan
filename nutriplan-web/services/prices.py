@@ -58,10 +58,17 @@ def normalize_price(record, dry_matter_percent, feed_id):
         dm = float(dry_matter_percent) / 100
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f'Feed {feed_id}: invalid price or dry matter.') from error
+    if record.get('source_type') == 'preloaded':
+        if (amount != default_price(feed_id) or record.get('unit') != 'kg_as_fed'
+                or record.get('currency') not in (None, '', 'BRL')):
+            raise ValueError(f'Feed {feed_id}: invalid catalog price.')
+        return {'rufas_id': int(feed_id), 'amount': amount, 'currency': 'BRL', 'unit': 'kg_as_fed',
+                'source_type': 'preloaded', 'source': 'feed_prices.csv', 'reference_date': None,
+                'geography': '', 'notes': '', 'price_as_fed': amount}
     currency = record.get('currency')
     unit = record.get('unit')
     source_type = record.get('source_type')
-    source = record.get('source')
+    source = 'user' if source_type == 'current' else record.get('source')
     date = record.get('reference_date')
     if not math.isfinite(amount) or amount < 0 or not math.isfinite(dm) or not 0 < dm <= 1:
         raise ValueError(f'Feed {feed_id}: invalid price or dry matter.')
@@ -76,9 +83,9 @@ def normalize_price(record, dry_matter_percent, feed_id):
         normalized_currency = currency.strip().upper()
     if unit not in UNITS:
         raise ValueError(f'Feed {feed_id}: unsupported price unit.')
-    if source_type not in SOURCES or not isinstance(source, str) or not source.strip():
+    if source_type not in SOURCES | {'current'} or not isinstance(source, str) or not source.strip():
         raise ValueError(f'Feed {feed_id}: price source and source type are required.')
-    if not date and source_type == 'demonstration':
+    if not date and source_type in {'current', 'demonstration'}:
         date = None
     else:
         if not isinstance(date, str) or not date:
@@ -111,7 +118,7 @@ def resolve_price(item, library):
         preloaded = default_price(identifier)
         if preloaded is None:
             return None
-        return {'rufas_id': identifier, 'amount': preloaded, 'currency': None, 'unit': 'kg_as_fed',
+        return {'rufas_id': identifier, 'amount': preloaded, 'currency': 'BRL', 'unit': 'kg_as_fed',
                 'source_type': 'preloaded', 'source': 'feed_prices.csv', 'reference_date': None,
                 'geography': '', 'notes': '', 'price_as_fed': preloaded}
     try:
@@ -134,5 +141,3 @@ def comparison_status(records):
     if None in dates or len(dates) != 1:
         return 'incompatible_dates'
     return 'comparable'
-
-

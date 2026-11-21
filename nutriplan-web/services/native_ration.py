@@ -17,7 +17,7 @@ from RUFAS.units import MeasurementUnits
 from services.nutrition import calculate
 from services.numbers import parse_number
 from services.emissions import (
-    calculate_candidate_ration_emissions, calculate_previous_ration_emissions, previous_ration_ndf_percent,
+    calculate_candidate_ration_emissions, previous_ration_ndf_percent,
 )
 from RUFAS.biophysical.animal.nutrients.nutrition_supply_calculator import FeedInRation, NutritionSupplyCalculator
 from RUFAS.biophysical.animal.animal_module_constants import AnimalModuleConstants
@@ -51,11 +51,12 @@ class DeterministicRationOptimizer(RationOptimizer):
 class CandidateRationOptimizer(DeterministicRationOptimizer):
     """Use native lactating-cow equations with candidate-specific NDF and emissions."""
 
-    def __init__(self, animal_payload, calculate_candidate_emissions=True, seed=None):
+    def __init__(self, animal_payload, calculate_candidate_emissions=True, seed=None, *, candidate_ndf=True):
         super().__init__()
         self.animal_payload = animal_payload
         self.calculate_candidate_emissions = calculate_candidate_emissions
         self.candidate_seed = seed
+        self.candidate_ndf = candidate_ndf
 
     def _build_initial_value(self, previous_ration, ration_config):
         if previous_ration is None and self.candidate_seed is not None:
@@ -69,9 +70,9 @@ class CandidateRationOptimizer(DeterministicRationOptimizer):
                 function_name = constraint['fun'].__name__
                 if function_name == 'NASEM_net_energy_constraint':
                     constraint['fun'] = self._candidate_net_energy_constraint
-                elif function_name == 'protein_constraint_lower':
+                elif self.candidate_ndf and function_name == 'protein_constraint_lower':
                     constraint['fun'] = self._candidate_protein_lower
-                elif function_name == 'protein_constraint_upper':
+                elif self.candidate_ndf and function_name == 'protein_constraint_upper':
                     constraint['fun'] = self._candidate_protein_upper
 
     @staticmethod
@@ -147,26 +148,6 @@ def animal_model(animal_category):
         return ANIMAL_MODELS[animal_category]
     except (KeyError, TypeError) as error:
         raise ValueError(f'Unsupported animal category: {animal_category}.') from error
-
-
-def resolve_emissions(payload, animal, library):
-    """Resolve lactating-cow emissions only for lactating animal models."""
-    animal_type, _, calculation_type = animal_model(payload.get('animal_category'))
-    if calculation_type != 'lactating' or animal_type is not AnimalType.LAC_COW:
-        raise ValueError('Emission pathway is not validated for this animal category.')
-    emission_keys = ('enteric_methane_g_day', 'urine_nitrogen_kg_day')
-    provided = [key for key in emission_keys if payload.get(key) is not None and payload.get(key) != '']
-    if payload.get('previous_ration') is not None and provided:
-        raise ValueError('Choose either a previous ration or explicit emission values, not both.')
-    if payload.get('previous_ration') is not None:
-        emissions = calculate_previous_ration_emissions(payload['previous_ration'], library, animal, build_feed)
-        source = payload.get('previous_ration_source')
-        if isinstance(source, str) and source.strip():
-            emissions['source_reference'] = source.strip()
-        return emissions
-    if len(provided) != len(emission_keys):
-        return None
-    return _explicit_emissions(payload)
 
 
 def feed_library():
@@ -260,13 +241,11 @@ def automatic_candidates():
 def available_feeds():
     feeds = []
     for identifier, row in feed_library().items():
-        if _is_excluded_feed(row):
-            continue
         feeds.append({
             'id': identifier,
             'name': row['Name'],
             'category': row['Fd_Category'],
-            'group': feed_group(row),
+            'group': None if _is_excluded_feed(row) else feed_group(row),
             'recommended': identifier in RECOMMENDED_FEED_IDS,
             'dry_matter_percent': float(row['DM']),
             'crude_protein_percent_dm': float(row['CP']) if row['CP'] else None,
@@ -368,22 +347,23 @@ def _payload_with_ndf(payload, ndf_percentage):
 
 
 def _explicit_emissions(payload):
-    source = payload.get('emission_source')
-    if not isinstance(source, str) or not source.strip():
-        raise ValueError('A documented emission source is required for explicit values.')
     try:
         methane = parse_number(payload['enteric_methane_g_day'], 'enteric_methane_g_day', minimum=0)
         urine_nitrogen = parse_number(payload['urine_nitrogen_kg_day'], 'urine_nitrogen_kg_day', minimum=0)
     except (TypeError, ValueError) as error:
         raise ValueError('Invalid methane or urinary nitrogen measurement.') from error
-    if not all(math.isfinite(value) and value >= 0 for value in (methane, urine_nitrogen)):
-        raise ValueError('Invalid methane or urinary nitrogen measurement.')
-    return {'enteric_methane_g_day': methane, 'urine_nitrogen_kg_day': urine_nitrogen,
-            'provenance': 'user_supplied', 'source_reference': source.strip()}
+    result = {'enteric_methane_g_day': methane, 'urine_nitrogen_kg_day': urine_nitrogen,
+              'provenance': 'user_supplied'}
+    source = payload.get('emission_source')
+    if isinstance(source, str) and source.strip():
+        result['source_reference'] = source.strip()
+    return result
 
 
 def optimize_native(payload):
     """Attempt native NASEM ration optimization with candidate-specific dependencies when available."""
+    if payload.get('previous_ration') == []:
+        payload = {**payload, 'previous_ration': None}
     category = payload.get('animal_category')
     try:
         _, group, _ = animal_model(category)
@@ -395,21 +375,17 @@ def optimize_native(payload):
 
     has_previous_ration = payload.get('previous_ration') is not None
     emission_keys = ('enteric_methane_g_day', 'urine_nitrogen_kg_day')
-    provided = [key for key in emission_keys if payload.get(key) is not None and payload.get(key) != '']
-    if has_previous_ration and provided:
-        raise ValueError('Choose either a previous ration or explicit emission values, not both.')
-    missing_emissions = [key for key in emission_keys if key not in provided]
-    if provided and missing_emissions:
-        return {'ok': False, 'status': 'incomplete_input', 'missing_inputs': missing_emissions,
-                'message': 'Provide both methane and urinary nitrogen, or leave both blank for candidate-ration calculation.'}
+    missing_emissions = [key for key in emission_keys
+                         if payload.get(key) is None or str(payload[key]).strip() == '']
+    if len(missing_emissions) == 1:
+        return {'ok': False, 'status': 'incomplete_input', 'error_code': 'emissions_pair_required',
+                'missing_inputs': missing_emissions,
+                'message': 'Provide both methane and urinary nitrogen, or leave both blank for automatic estimation.'}
+    explicit_emissions = _explicit_emissions(payload) if not missing_emissions else None
 
     parameters = dict(payload.get('parameters') or {})
     supplied_ndf = parameters.get('ndf_percentage')
     candidate_ndf_mode = not has_previous_ration and supplied_ndf in (None, '')
-    if not has_previous_ration and not candidate_ndf_mode and not provided:
-        return {'ok': False, 'status': 'incomplete_input', 'missing_inputs': list(emission_keys),
-                'message': 'Native NASEM energy requires a previous ration, candidate-ration calculation, or documented emissions.'}
-    explicit_emissions = _explicit_emissions(payload) if provided else None
 
     if has_previous_ration:
         payload = prepare_animal_payload(payload)
@@ -454,6 +430,7 @@ def optimize_native(payload):
         initial_animal = calculate(_payload_with_ndf(payload, initial_ndf), include_native=True)
         if initial_animal['status'] != 'success':
             return {'ok': False, 'status': initial_animal['status'],
+                    'error_code': initial_animal.get('error_code', initial_animal['status']),
                     'missing_inputs': initial_animal.get('missing_inputs', []),
                     'message': initial_animal.get('message', 'Complete the animal profile.')}
         initial_requirements = initial_animal['_native_requirements']
@@ -466,7 +443,9 @@ def optimize_native(payload):
 
     animal = calculate(payload, include_native=True)
     if animal['status'] != 'success':
-        return {'ok': False, 'status': animal['status'], 'missing_inputs': animal.get('missing_inputs', []),
+        return {'ok': False, 'status': animal['status'],
+                'error_code': animal.get('error_code', animal['status']),
+                'missing_inputs': animal.get('missing_inputs', []),
                 'message': animal.get('message', 'Complete the animal profile.')}
     requirements = animal.pop('_native_requirements')
     if candidate_ndf_mode and not math.isclose(
@@ -474,27 +453,17 @@ def optimize_native(payload):
         return {'ok': False, 'status': 'calculation_error',
                 'message': 'Candidate NDF changed the lactating-cow DMI requirement; candidate formulation is not validated.'}
 
-    if has_previous_ration:
-        emissions = calculate_previous_ration_emissions(payload['previous_ration'], library, animal, build_feed)
-        source = payload.get('previous_ration_source')
-        if isinstance(source, str) and source.strip():
-            emissions['source_reference'] = source.strip()
-        methane = emissions['enteric_methane_g_day']
-        urine_nitrogen = emissions['urine_nitrogen_kg_day']
-        optimizer = DeterministicRationOptimizer()
-    elif candidate_ndf_mode:
-        emissions = explicit_emissions
-        methane = explicit_emissions['enteric_methane_g_day'] if explicit_emissions else None
-        urine_nitrogen = explicit_emissions['urine_nitrogen_kg_day'] if explicit_emissions else None
+    emissions = explicit_emissions
+    methane = emissions['enteric_methane_g_day'] if emissions else None
+    urine_nitrogen = emissions['urine_nitrogen_kg_day'] if emissions else None
+    if candidate_ndf_mode or emissions is None:
         optimizer = CandidateRationOptimizer(
             animal_payload=animal,
-            calculate_candidate_emissions=explicit_emissions is None,
+            calculate_candidate_emissions=emissions is None,
             seed=candidate_seed,
+            candidate_ndf=candidate_ndf_mode,
         )
     else:
-        emissions = explicit_emissions
-        methane = emissions['enteric_methane_g_day']
-        urine_nitrogen = emissions['urine_nitrogen_kg_day']
         optimizer = DeterministicRationOptimizer()
 
     solution, configuration = optimizer.attempt_optimization(
@@ -558,15 +527,16 @@ def optimize_native(payload):
         ration_context = {'ndf_percentage': final_ndf,
                           'dry_matter_intake_kg_day': sum(quantities),
                           'source': 'RuFaS optimized feed composition'}
-        if emissions is None:
-            emissions = calculate_candidate_ration_emissions(ration_feeds, animal)
-        else:
-            emissions = {**emissions,
-                         'candidate_ration': [{'rufas_id': feed.info.rufas_id, 'kg_dm_day': feed.amount}
-                                              for feed in ration_feeds],
-                         'candidate_ration_dmi_kg_day': sum(quantities)}
-    else:
-        animal.pop('_native_requirements', None)
+    elif has_previous_ration:
+        ration_context = {'ndf_percentage': animal['parameters']['ndf_percentage'],
+                          'source': 'RuFaS previous-ration feed composition'}
+    if emissions is None:
+        emissions = calculate_candidate_ration_emissions(ration_feeds, animal)
+    elif candidate_ndf_mode:
+        emissions = {**emissions,
+                     'candidate_ration': [{'rufas_id': feed.info.rufas_id, 'kg_dm_day': feed.amount}
+                                          for feed in ration_feeds],
+                     'candidate_ration_dmi_kg_day': sum(quantities)}
 
     ingredients = [{'id': feed.rufas_id, 'name': feed.Name, 'kg_dm': quantity,
                     'kg_as_fed': quantity / (feed.DM / 100),
@@ -592,7 +562,11 @@ def optimize_native(payload):
         baseline_cost = 0.0
         for item in payload['previous_ration']:
             identifier = int(item['rufas_id'])
-            price_record = resolve_price(item, library) if item.get('price_record') is not None or item.get('price_as_fed') not in (None, '') else selected_prices.get(identifier)
+            try:
+                price_record = resolve_price(item, library) if item.get('price_record') is not None or item.get('price_as_fed') not in (None, '') else selected_prices.get(identifier)
+            except ValueError:
+                # The optional historical quote cannot determine today's nutrient supply.
+                price_record = None
             if price_record is None:
                 baseline['missing_price_ids'].append(identifier)
                 continue
@@ -623,6 +597,12 @@ def optimize_native(payload):
                           'assumption_type': animal['assumption_type']},
               'solver_status': int(solution.status), 'emissions': emissions,
               'price_unit': 'currency/kg as-fed input; currency/kg dry matter optimizer'}
+    if has_previous_ration:
+        from services.emissions import previous_ration_feeds
+        from services.diet_comparison import compare_rations
+        previous = previous_ration_feeds(payload['previous_ration'], library, build_feed)
+        result['diet_comparison'] = compare_rations(
+            previous, ration_feeds, configuration, selected_prices, payload, animal, emissions)
     if ration_context is not None:
         result['ration_context'] = ration_context
     return result
