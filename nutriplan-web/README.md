@@ -15,15 +15,23 @@ A variável `PORT` permite escolher outra porta. A primeira instalação pode pr
 
 ## Formular e comparar
 
-1. Em **Animal**, escolha fase e paridade e informe o peso, a produção e a composição do leite. Campos numéricos aceitam ponto ou vírgula decimal.
+1. Em **Animal**, escolha a **categoria animal**: vaca de primeira lactação, vaca multípara, novilha I/II/III ou vaca seca. Para lactantes, informe fase, produção atual, meta e composição do leite. Para novilhas, informe o ganho diário em **kg/dia**. Para vaca seca, informe o intervalo entre partos e, se gestante, o dia de gestação. Campos numéricos aceitam ponto ou vírgula decimal.
 2. Em **Dieta atual**, cadastre opcionalmente os alimentos do lote e suas quantidades em kg de matéria seca por animal/dia. O total é atualizado durante a edição. Os preços informados nessa seção servem para a comparação de custo.
-3. Em **Dieta otimizada**, pesquise por nome nos grupos ou no catálogo personalizado de 175 alimentos. A seleção vazia usa o conjunto recomendado com preços disponíveis. Para formular com uma lista própria, marque de 2 a 25 ingredientes. Revise os preços e clique **Calcular dieta otimizada**. A produção informada é a meta de referência e o sistema testa até sete metas superiores, em passos de 1 kg/dia.
-4. Em **Resultados**, consulte o custo por animal/dia, o consumo de matéria seca, a meta de leite e a composição da dieta. O resumo destaca a maior meta viável entre as testadas. O diagnóstico, os detalhes de metas e emissões, a comparação de dietas e a sensibilidade estão disponíveis pela API.
-5. Em **Metodologia**, consulte o modelo de custo, as onze restrições, os critérios do SLSQP e a interpretação das metas e emissões.
+3. Em **Dieta otimizada**, pesquise por nome nos grupos ou no catálogo personalizado de 175 alimentos. A seleção vazia usa o conjunto recomendado com preços disponíveis. Para formular com uma lista própria, marque de 2 a 25 ingredientes. Revise os preços e clique **Calcular dieta otimizada**. A produção atual é o piso que a dieta não pode reduzir; a meta não pode ser menor que ele. O sistema formula a meta e testa sete metas abaixo e sete acima da referência, em passos de 1 kg/dia.
+4. Em **Resultados**, a tela é dividida em três partes: **Custo das dietas** (comparação entre custo minimizado e máximo de produção: custo/dia, kg ingeridos, massa seca e leite em L/dia), **Gráficos e tabelas** (fronteira e resumo das etapas) e **Informações sobre a dieta** (composição e detalhes técnicos recolhíveis, com restrições e oferta na mesma tabela comparando as duas dietas). Para lactantes, a fronteira usa o **leite produzido** no eixo X e o botão **Explorar dietas** gera soluções viáveis não ótimas. Se o potencial de produção ficar abaixo da produção atual, a formulação é rejeitada. Para novilhas e vaca seca, não há meta/piso de leite; o resultado mostra as exigências do estágio.
+5. Em **Metodologia**, consulte o modelo de custo, as onze restrições, os critérios do SLSQP, o piso de leite, os limites de inclusão e a interpretação das metas e emissões.
+
+**Limites e inclusão fixa.** Na tabela de ingredientes, **Mín.** e **Máx.** são em kg MS por animal/dia e começam com os limites do catálogo NASEM. Marcar **Fixar** copia o mínimo para o máximo, mantendo o alimento em quantidade fixa.
 
 **Emissões — configuração opcional.** Deixe metano (g/dia) e nitrogênio urinário (kg/dia) em branco para usar as estimativas RuFaS da dieta candidata. Para uma análise com dados próprios, preencha os dois valores. As emissões utilizadas são retornadas pela API de formulação.
 
 Os dados da análise ficam disponíveis enquanto a página está aberta. Ao recarregá-la, a formulação começa vazia e o navegador reaplica as preferências de idioma e tema. Os catálogos distribuídos com o motor são lidos automaticamente.
+
+## Etapas de vida
+
+O NutriPlan formula para vacas lactantes e para **novilha I, novilha II, novilha III e vaca seca**. Esses estágios usam as exigências NASEM de mantença, crescimento, gestação e atividade, sem meta de leite, sem piso e sem fronteira custo × leite. O objetivo continua sendo o menor custo da dieta.
+
+As emissões de metano e nitrogênio urinário usam as rotas nativas do RuFaS para cada estágio: vaca lactante, novilha e vaca seca. Para novilha e vaca seca sem dieta atual, informe a FDN da dieta; ela é necessária porque o consumo estimado depende da FDN. O resumo das etapas guarda os resultados apenas na sessão atual; recarregar a página limpa o resumo.
 
 ## Interpretação
 
@@ -31,17 +39,10 @@ O SLSQP do SciPy busca um mínimo local sob restrições não lineares. A viabil
 
 ## Verificar esta versão
 
-Na pasta `nutriplan-web`, o comando abaixo descobre os 42 testes Python da aplicação. Os testes HTTP iniciam seu próprio servidor em uma porta local temporária. O motor RuFaS deve estar disponível para os cálculos. A suíte de testes do simulador tem execução independente.
+Na pasta `nutriplan-web`, o comando abaixo descobre os 48 testes Python da aplicação. Os testes HTTP iniciam seu próprio servidor em uma porta local temporária. O motor RuFaS deve estar disponível para os cálculos. A suíte de testes do simulador tem execução independente.
 
 ```bash
 MPLBACKEND=Agg PYTHONPATH=.:.. ../venv/bin/python -m unittest discover -s tests -v
 ```
 
-Com o servidor em execução, o teste de interface percorre a formulação com dados Guelph, o comparador, as metas e as sensibilidades de preço e disponibilidade. Verifica as cinco abas, a navegação por teclado na Metodologia, os dois idiomas, os temas, três larguras e zoom de 200%.
-
-```bash
-node tests/phase17_browser.cjs
-node --test tests/audit_e2e.cjs
-```
-
-O fluxo de navegador é uma verificação adicional à contagem do Python. Ele também verifica que o preenchimento acompanha a navegação entre abas, que recarregar a página abre Animal e limpa a análise e que os dados antigos no navegador são preservados. O roteiro de auditoria cruza as duas paridades com e sem dieta atual, valida os formulários e exerce a interface nas larguras de 320, 390, 768, 1280 e 1440 px. Os roteiros usam Playwright e um navegador Chromium com sandbox habilitada. Se já estiverem instalados fora do projeto, aponte `NODE_PATH` para o diretório dos módulos Node e `CHROMIUM_PATH` para o executável do navegador. `NUTRIPLAN_URL` seleciona a origem do servidor de teste. A aplicação em execução dispensa essas ferramentas.
+Os testes cobrem a fórmula de energia do leite, as rotas NEL/MP, o piso contra a produção atual, as duas paridades, a varredura bilateral, a exploração de dietas alternativas, os estágios novilha I/II/III e vaca seca, a validação de composição e os contratos HTTP. Os roteiros de navegador citados em versões anteriores não estão incluídos nesta cópia; a suíte Python não depende deles.

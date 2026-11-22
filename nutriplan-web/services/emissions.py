@@ -42,14 +42,15 @@ def previous_ration_ndf_percent(previous_ration, library, build_feed):
     return ndf / dry_matter * 100
 
 
-def calculate_previous_ration_emissions(previous_ration, library, animal, build_feed):
-    """Use native IPCC methane and lactating-cow manure models on a known ration.
+def calculate_previous_ration_emissions(previous_ration, library, animal, build_feed,
+                                        calculation_type='lactating'):
+    """Use native IPCC methane and stage-specific manure models on a known ration.
 
     Energy fields are unavailable before methane and urine nitrogen are known.
     The selected IPCC methane and urine-nitrogen pathways do not use them.
     """
     feeds = previous_ration_feeds(previous_ration, library, build_feed)
-    emissions = calculate_ration_emissions(feeds, animal)
+    emissions = calculate_ration_emissions(feeds, animal, calculation_type)
     emissions.update({
         'provenance': 'native_rufas_previous_ration',
         'previous_ration': [{'rufas_id': item.info.rufas_id, 'kg_dm_day': item.amount} for item in feeds],
@@ -65,10 +66,10 @@ class CandidateEmissionEstimationError(ValueError):
     """A candidate lies outside the domain of the automatic emission calculations."""
 
 
-def calculate_candidate_ration_emissions(feeds, animal):
-    """Apply the same native lactating-cow emission methods to a candidate ration."""
+def calculate_candidate_ration_emissions(feeds, animal, calculation_type='lactating'):
+    """Apply the same native stage-specific emission methods to a candidate ration."""
     try:
-        emissions = calculate_ration_emissions(feeds, animal)
+        emissions = calculate_ration_emissions(feeds, animal, calculation_type)
     except (ValueError, ArithmeticError) as error:
         raise CandidateEmissionEstimationError('Automatic emission estimation failed.') from error
     emissions.update({
@@ -83,8 +84,8 @@ def calculate_candidate_ration_emissions(feeds, animal):
     return emissions
 
 
-def calculate_ration_emissions(feeds, animal):
-    """Calculate FDN, IPCC methane and lactating-cow urinary nitrogen from native feed composition."""
+def calculate_ration_emissions(feeds, animal, calculation_type='lactating'):
+    """Calculate FDN, methane and urinary nitrogen from native feed composition."""
     dry_matter = sum(item.amount for item in feeds)
     if not math.isfinite(dry_matter) or dry_matter <= 0:
         raise ValueError('Ration emissions require positive dry matter intake.')
@@ -105,29 +106,60 @@ def calculate_ration_emissions(feeds, animal):
         starch_supply=nutrients['starch'], byproduct_supply=unavailable,
     )
     parameters = animal['parameters']
-    methane_models = {'cows': {'lactating cows': 'IPCC'}}
-    methane, unmitigated = EntericMethaneCalculator.calculate_cow_methane(
-        is_lactating=True, body_weight=animal['body_weight_kg'],
-        milk_fat=parameters['milk_fat'], metabolizable_energy_intake=unavailable,
-        nutrient_amounts=supply, methane_mitigation_method='',
-        methane_mitigation_additive_amount=0, methane_models=methane_models,
-    )
-    _, excretion = ManureExcretionCalculator.calculate_cow_manure(
-        is_lactating=True, body_weight=animal['body_weight_kg'],
-        days_in_milk=int(parameters['days_in_milk']),
-        milk_protein=parameters['milk_true_protein'],
-        daily_milk_production=parameters['milk_production'],
-        fecal_phosphorus=unavailable, urine_phosphorus_required=unavailable,
-        nutrient_amounts=supply,
-    )
+    body_weight = animal['body_weight_kg']
+    if calculation_type == 'lactating':
+        methane_models = {'cows': {'lactating cows': 'IPCC'}}
+        methane, unmitigated = EntericMethaneCalculator.calculate_cow_methane(
+            is_lactating=True, body_weight=body_weight,
+            milk_fat=parameters['milk_fat'], metabolizable_energy_intake=unavailable,
+            nutrient_amounts=supply, methane_mitigation_method='',
+            methane_mitigation_additive_amount=0, methane_models=methane_models,
+        )
+        _, excretion = ManureExcretionCalculator.calculate_cow_manure(
+            is_lactating=True, body_weight=body_weight,
+            days_in_milk=int(parameters['days_in_milk']),
+            milk_protein=parameters['milk_true_protein'],
+            daily_milk_production=parameters['milk_production'],
+            fecal_phosphorus=unavailable, urine_phosphorus_required=unavailable,
+            nutrient_amounts=supply,
+        )
+        methane_model = 'RuFaS IPCC lactating-cow model'
+        manure_model = 'RuFaS lactating-cow manure model'
+    elif calculation_type in ('growth', 'heifer'):
+        unmitigated = EntericMethaneCalculator.calculate_heifer_methane('IPCC', supply)
+        methane = unmitigated
+        _, excretion = ManureExcretionCalculator.calculate_heifer_manure(
+            body_weight=body_weight, fecal_phosphorus=unavailable,
+            urine_phosphorus_required=unavailable, nutrient_amount=supply,
+        )
+        methane_model = 'RuFaS IPCC heifer model'
+        manure_model = 'RuFaS heifer manure model'
+    elif calculation_type in ('dry', 'dry_cow'):
+        methane_models = {'cows': {'dry cows': 'IPCC'}}
+        methane, unmitigated = EntericMethaneCalculator.calculate_cow_methane(
+            is_lactating=False, body_weight=body_weight, milk_fat=0.0,
+            metabolizable_energy_intake=unavailable, nutrient_amounts=supply,
+            methane_mitigation_method='', methane_mitigation_additive_amount=0,
+            methane_models=methane_models,
+        )
+        _, excretion = ManureExcretionCalculator.calculate_cow_manure(
+            is_lactating=False, body_weight=body_weight, days_in_milk=0,
+            milk_protein=0.0, daily_milk_production=0.0,
+            fecal_phosphorus=unavailable, urine_phosphorus_required=unavailable,
+            nutrient_amounts=supply,
+        )
+        methane_model = 'RuFaS IPCC dry-cow model'
+        manure_model = 'RuFaS dry-cow manure model'
+    else:
+        raise ValueError(f'Unsupported emission calculation type: {calculation_type}.')
     urine_nitrogen = excretion.urine_nitrogen
     if not all(math.isfinite(value) and value >= 0 for value in (methane, unmitigated, urine_nitrogen)):
         raise ValueError('Native ration emissions are not finite and nonnegative.')
     return {
         'enteric_methane_g_day': unmitigated,
         'urine_nitrogen_kg_day': urine_nitrogen,
-        'methane_model': 'RuFaS IPCC lactating-cow model',
-        'urinary_nitrogen_model': 'RuFaS lactating-cow manure model',
+        'methane_model': methane_model,
+        'urinary_nitrogen_model': manure_model,
         'ration_dmi_kg_day': dry_matter,
         'ration_ndf_percent': supply.ndf_percentage,
     }

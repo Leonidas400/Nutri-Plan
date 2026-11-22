@@ -255,6 +255,7 @@ function translateFeedName(name) {
   <a href="#methodology-solver">Solver SLSQP</a>
   <a href="#methodology-constraints">Restrições nutricionais</a>
   <a href="#methodology-targets">Avaliação de metas de leite</a>
+  <a href="#methodology-stages">Etapas de vida</a>
   <a href="#methodology-energy">Emissões e energia</a>
   <a href="#methodology-results">Comparação e interpretação dos resultados</a>
   <a href="#methodology-references">Limitações e referências</a>
@@ -295,6 +296,7 @@ function translateFeedName(name) {
   <h2 id="methodology-title-feeds">Ingredientes e composição</h2>
   <p>O catálogo NASEM do RuFaS fornece matéria seca, fibra, proteína, amido, gordura, minerais e as frações usadas nos cálculos de aproveitamento. A composição de um alimento real pode diferir do catálogo.</p>
   <p>A seleção manual usa somente os alimentos escolhidos. Com a seleção vazia, a formulação usa o conjunto recomendado com preço disponível. Os preços simples da interface são informados por kg de matéria natural, que inclui água.</p>
+  <p>Os limites mínimo e máximo de inclusão são em kg MS por animal/dia. O padrão vem do catálogo NASEM e pode ser ajustado. O botão <strong>Fixar</strong> copia o mínimo para o máximo, mantendo o alimento em quantidade fixa na dieta.</p>
 </section>
 <section id="methodology-optimization" class="methodology-section" tabindex="-1" aria-labelledby="methodology-title-optimization">
   <h2 id="methodology-title-optimization">Modelo matemático</h2>
@@ -335,8 +337,18 @@ function translateFeedName(name) {
 <section id="methodology-targets" class="methodology-section" tabindex="-1" aria-labelledby="methodology-title-targets">
   <h2 id="methodology-title-targets">Avaliação de metas de leite</h2>
   <p>A produção informada na aba Animal define a meta de referência e entra no cálculo das exigências. Com entradas válidas, a aplicação formula essa dieta e testa até sete metas adicionais em passos de 1 kg de leite por animal/dia. Cada tentativa recalcula as exigências e busca menor custo com os mesmos ingredientes, limites e preços.</p>
+  <p>A produção atual é um piso separado da meta. A meta não pode ser menor que a produção atual. Depois de encontrar a dieta de menor custo, o cálculo verifica o potencial de produção da própria ração: se ele ficar abaixo da produção atual, a dieta é rejeitada.</p>
+  <p class="method-equation" translate="no">leite_NEL = (EL_oferta − exigências não lactantes) ÷ energia por kg de leite</p>
+  <p class="method-equation" translate="no">leite_MP = (PM_oferta − PM não lactante) × 0,69 ÷ (proteína verdadeira % ÷ 100 × 1000)</p>
+  <p>O potencial de produção é o menor valor entre as rotas de energia líquida (NEL) e proteína metabolizável (MP). A energia por kg de leite usa 0,0929 × gordura + (0,0547 ÷ 0,93) × proteína verdadeira + 0,0395 × lactose, em Mcal/kg. A eficiência de 0,69 converte proteína metabolizável em proteína do leite. O resultado é um teto do modelo NASEM 2021, não uma previsão biológica da produção observada.</p>
   <p>A API informa custo, consumo, restrições e falhas por meta. Entre as soluções viáveis testadas, uma opção é não dominada quando nenhuma outra tem custo igual ou menor e meta igual ou maior com pelo menos uma vantagem estrita.</p>
+  <p>Os resultados apresentam uma tabela e um gráfico de custo por meta testada. Os pontos não dominados são destacados; a linha entre eles é apenas uma referência visual, pois a varredura é discreta.</p>
   <p>A maior meta viável é a maior entre as efetivamente testadas com sucesso. Ela descreve uma solução nutricional no modelo. A produção real depende da resposta do animal e do manejo. Uma falha de convergência informa que a tentativa ficou sem solução encontrada.</p>
+</section>
+<section id="methodology-stages" class="methodology-section" tabindex="-1" aria-labelledby="methodology-title-stages">
+  <h2 id="methodology-title-stages">Etapas de vida</h2>
+  <p>O motor aceita vaca em lactação, novilha I/II/III e vaca seca. Novilhas e vaca seca minimizam custo sujeito às exigências de mantença, crescimento, gestação e atividade. Não há meta, piso nem fronteira de leite nesses estágios.</p>
+  <p>O ganho diário de novilha é informado em kg/dia, a unidade usada pelo RuFaS. As emissões usam as rotas nativas do estágio. O resumo das etapas guarda apenas os cálculos desta sessão e não simula transições de vida.</p>
 </section>
 <section id="methodology-energy" class="methodology-section" tabindex="-1" aria-labelledby="methodology-title-energy">
   <h2 id="methodology-title-energy">Emissões e energia</h2>
@@ -375,11 +387,12 @@ function translateFeedName(name) {
           <fieldset class="profile-group" id="animalPrimaryFields">
             <legend class="profile-group-title"><span>Informações da vaca</span></legend>
             <div class="fields">
-              <div class="field"><label for="lactationPhase">Subcategoria da lactação</label><select class="input" id="lactationPhase" name="lactation_subcategory" required><option value="" selected>Escolha uma fase</option><option value="fresh">Recém-parida</option><option value="early">Início da lactação</option><option value="mid">Meio da lactação</option><option value="late">Final da lactação</option></select></div>
-              <div class="field"><label for="category">Paridade / número de lactações</label><select class="input" id="category" name="parity"><option value="first_lactation_cow" selected>Primeira lactação (1)</option><option value="multiparous_lactating_cow">Multípara (2+)</option></select></div>
+              <div class="field" id="lactationPhaseField"><label for="lactationPhase">Subcategoria da lactação</label><select class="input" id="lactationPhase" name="lactation_subcategory" required><option value="" selected>Escolha uma fase</option><option value="fresh">Recém-parida</option><option value="early">Início da lactação</option><option value="mid">Meio da lactação</option><option value="late">Final da lactação</option></select></div>
+              <div class="field"><label for="category">Categoria animal</label><select class="input" id="category" name="animal_category"><option value="first_lactation_cow" selected>Vaca de primeira lactação</option><option value="multiparous_lactating_cow">Vaca multípara</option><option value="heifer_I">Novilha I</option><option value="heifer_II">Novilha II</option><option value="heifer_III">Novilha III</option><option value="dry_cow">Vaca seca</option></select></div>
               <div class="field"><label for="weight">Peso corporal (kg)</label><input class="input" id="weight" name="body_weight_kg" type="text" inputmode="decimal" min="1" step="any" required></div>
-              <div class="field"><label for="profile-days_in_milk">Dias em lactação</label><input class="input" id="profile-days_in_milk" data-profile="days_in_milk" name="days_in_milk" type="text" inputmode="numeric" min="0" step="1" required></div>
-              <div class="field full"><label class="check" for="pregnant"><input id="pregnant" type="checkbox" aria-controls="pregnancyDayField" aria-expanded="false"> Gestante</label></div>
+              <div class="field" id="daysInMilkField"><label for="profile-days_in_milk">Dias em lactação</label><input class="input" id="profile-days_in_milk" data-profile="days_in_milk" name="days_in_milk" type="text" inputmode="numeric" min="0" step="1" required></div>
+              <div class="field hidden" id="adgField" hidden><label for="profile-average_daily_gain_heifer">Ganho diário <small>(kg/dia)</small></label><input class="input" id="profile-average_daily_gain_heifer" data-profile="average_daily_gain_heifer" name="average_daily_gain_heifer" type="text" inputmode="decimal" min="0" step="any"></div>
+              <div class="field full" id="pregnantField"><label class="check" for="pregnant"><input id="pregnant" type="checkbox" aria-controls="pregnancyDayField" aria-expanded="false"> Gestante</label></div>
               <div class="field hidden" id="pregnancyDayField" hidden><label for="profile-day_of_pregnancy">Dia de gestação</label><input class="input" id="profile-day_of_pregnancy" data-profile="day_of_pregnancy" name="day_of_pregnancy" type="text" inputmode="numeric" min="0" step="1"></div>
             </div>
           </fieldset>
@@ -387,7 +400,8 @@ function translateFeedName(name) {
             <legend class="profile-group-title"><span>Objetivo de produção</span><small>Metas do rebanho que a dieta deve atender</small></legend>
             <p class="profile-goals-note">As metas de produção e composição definem as exigências nutricionais que a dieta precisa atingir. O sistema calcula a exigência e a dieta de menor custo — não prevê a composição do leite a partir da ração.</p>
             <div class="fields">
-              <div class="field"><label for="profile-milk_production">Produção de leite <small>(kg/dia)</small></label><input class="input" id="profile-milk_production" data-profile="milk_production" name="milk_production" type="text" inputmode="decimal" min="0" step="any" required></div>
+              <div class="field"><label for="milkReference">Produção atual <small>(kg/dia)</small></label><input class="input" id="milkReference" name="milk_reference_kg_day" type="text" inputmode="decimal" min="0" step="any" required aria-describedby="milkReferenceHelp"><small class="micro-note" id="milkReferenceHelp">Piso que a dieta otimizada não pode reduzir.</small></div>
+              <div class="field"><label for="profile-milk_production">Meta de produção <small>(kg/dia)</small></label><input class="input" id="profile-milk_production" data-profile="milk_production" name="milk_production" type="text" inputmode="decimal" min="0" step="any" required></div>
               <div class="field"><label for="profile-milk_fat">Gordura alvo do leite <small>(%)</small></label><input class="input" id="profile-milk_fat" data-profile="milk_fat" name="milk_fat" type="text" inputmode="decimal" min="0" max="100" step="any" required></div>
               <div class="field"><label for="profile-milk_true_protein">Proteína alvo do leite <small>(%)</small></label><input class="input" id="profile-milk_true_protein" data-profile="milk_true_protein" name="milk_true_protein" type="text" inputmode="decimal" min="0" max="100" step="any" required></div>
               <div class="field"><label for="profile-milk_lactose">Lactose alvo do leite <small>(%)</small></label><input class="input" id="profile-milk_lactose" data-profile="milk_lactose" name="milk_lactose" type="text" inputmode="decimal" min="0" max="100" step="any" required><small class="micro-note" id="origin-milk_lactose"></small></div>
@@ -403,7 +417,7 @@ function translateFeedName(name) {
       <section class="card ingredient-card" aria-labelledby="feedsTitle">
         <div class="ingredient-head"><div><p class="stage-heading">02 <span aria-hidden="true">/</span> DIETA FUTURA</p><h2 id="feedsTitle">Ingredientes disponíveis para a formulação <span class="count" id="selectedFeedCount">0 selecionados</span></h2></div></div>
         <div id="feedDiscovery" class="feed-discovery"><div class="feed-mode-switch" role="group" aria-label="Modo de seleção"><label class="feed-mode-option"><input type="radio" name="feedMode" id="feedModeGroups" value="groups" checked><span>Grupos recomendados</span></label><label class="feed-mode-option"><input type="radio" name="feedMode" id="feedModeCustom" value="custom"><span>Personalizado</span></label></div><div id="feedGroupTabs" class="feed-group-tabs" role="group" aria-label="Grupos de alimentos"></div><details class="advanced-options" id="feedFilters"><summary>Filtros de ingredientes</summary><div class="feed-picker-toolbar"><div class="field"><label for="feedSearch">Pesquisar ingrediente</label><input class="input" id="feedSearch" type="search" placeholder="Nome do ingrediente" autocomplete="off"></div><div class="feed-picker-controls"><label class="feed-check-filter" for="selectedFeedsOnly"><input id="selectedFeedsOnly" type="checkbox"><span>Somente selecionados</span></label><div class="field"><label for="feedCategory">Categoria RuFaS</label><select class="input" id="feedCategory"><option value="">Todas</option></select></div></div></div></details><div id="feedPicker" class="feed-picker" role="group" aria-label="Ingredientes disponíveis"></div><p id="feedMatches" class="visually-hidden" role="status" aria-live="polite"></p><div id="feedComposition" class="ingredient-note">Foque ou selecione um alimento para consultar sua composição.</div></div>
-        <div class="tablewrap" role="region" aria-label="Tabela de ingredientes editáveis" tabindex="0"><table class="table feed-table"><thead><tr><th class="ingredient-name" scope="col">Ingrediente</th><th class="money-col" scope="col">Valor do preço</th><th class="action-col" scope="col">Ação</th></tr></thead><tbody id="feedRows"></tbody></table></div>
+        <div class="tablewrap" role="region" aria-label="Tabela de ingredientes editáveis" tabindex="0"><table class="table feed-table"><thead><tr><th class="ingredient-name" scope="col">Ingrediente</th><th class="money-col" scope="col">Valor do preço</th><th class="bounds-col" scope="col">Mín. kg MS/dia</th><th class="bounds-col" scope="col">Máx. kg MS/dia</th><th class="fix-col" scope="col">Fixar</th><th class="action-col" scope="col">Ação</th></tr></thead><tbody id="feedRows"></tbody></table></div>
         <div class="ingredient-footer"><div><button class="btn primary" id="run" type="button"><span id="runLabel">Calcular dieta otimizada</span> <span aria-hidden="true">→</span></button><div class="micro-note">Informe preços por kg de matéria natural.</div><p class="micro-note">Com a seleção vazia, o motor testa os alimentos recomendados com preço disponível. Para definir sua própria lista, selecione pelo menos dois.</p><p id="runStatus" role="status" aria-live="polite"></p></div></div>
         <div id="errorBox" class="hidden" role="alert"></div>
       </section>
@@ -411,22 +425,88 @@ function translateFeedName(name) {
     </section>
     <section id="results" class="hidden results-wrap native-result" aria-label="Resultados da otimização" aria-live="polite">
       <div id="resultContent" class="hidden">
-        <div class="result-title"><div><h2 id="resultHeading">Dieta de menor custo</h2><p id="engine">Motor de cálculo: RuFaS / SLSQP</p></div><div class="section-actions"><button class="btn sm" id="printResults" type="button">Imprimir</button></div></div>
+        <div class="result-title"><div><h2 id="resultHeading">Dieta de menor custo</h2><p id="engine">RuFaS · NASEM 2021</p></div><div class="section-actions"><button class="btn sm" id="printResults" type="button">Imprimir</button></div></div>
         <div id="solutionDetails">
-        <div class="result-overview">
-          <div class="hero-metric"><div class="k">CUSTO ESTIMADO / ANIMAL / DIA</div><div id="costDay" class="v"></div><div id="costBasisNotice" class="s"></div></div>
-          <div class="metrics">
-            <div class="metric"><div class="k">Meta de leite</div><div id="targetMilk" class="v"></div><div class="s">kg/dia</div></div>
-            <div class="metric"><div class="k">Ingestão de MS</div><div id="rDmi" class="v"></div><div class="s">kg/dia</div></div>
+        <section id="resultsCostSection" class="results-section" aria-labelledby="resultsCostTitle">
+          <h2 id="resultsCostTitle" class="results-section-title">Custo das dietas</h2>
+          <div class="tablewrap" role="region" aria-label="Comparação de custo e consumo das dietas" tabindex="0">
+            <table class="table diet-cost-table">
+              <thead><tr><th scope="col">Fase</th><th scope="col">Custo animal/dia (R$)</th><th scope="col">Kg ingeridos (kg/dia)</th><th scope="col">Massa seca (kg/dia)</th><th scope="col" id="dietCostMilkHeading">Leite produzido (L/dia)</th></tr></thead>
+              <tbody id="dietCostRows"></tbody>
+            </table>
           </div>
-        </div>
-        <section id="highestTargetSummary" class="card hidden"></section>
-        <section class="card result-composition">
-          <h2>Composição otimizada</h2>
-          <p class="sub">Participação na matéria seca total</p>
-          <div id="bars" aria-hidden="true"></div>
-          <h3>Quantidades da dieta</h3>
-          <div class="tablewrap"><table class="table diet-summary"><thead><tr><th scope="col">Ingrediente</th><th scope="col" id="primaryDmHeading">kg MS/dia</th><th scope="col">kg natural/dia</th><th scope="col">% MS</th><th scope="col" id="highestDmHeading" class="hidden">Maior meta (kg MS/dia)</th></tr></thead><tbody id="resultRows"></tbody></table></div>
+          <p id="dietCostNote" class="micro-note"></p>
+        </section>
+        <section id="resultsChartsSection" class="results-section" aria-labelledby="resultsChartsTitle">
+          <h2 id="resultsChartsTitle" class="results-section-title">Gráficos e tabelas</h2>
+          <section id="frontierCard" class="card frontier-card hidden" aria-live="polite">
+            <h2>Fronteira custo × leite</h2>
+            <p class="sub">Menor custo por nível de leite.</p>
+            <div class="frontier-actions"><button class="btn sm" id="exploreDiets" type="button">Explorar dietas</button><span id="exploreDietsStatus" class="micro-note" role="status" aria-live="polite"></span></div>
+            <div id="frontierChart" class="frontier-chart"></div>
+            <div class="tablewrap" role="region" aria-label="Metas de leite testadas" tabindex="0">
+              <table class="table frontier-table">
+                <thead><tr><th scope="col">Meta (kg/dia)</th><th scope="col">Custo/animal/dia</th><th scope="col">Máximo da dieta</th><th scope="col">Margem</th><th scope="col">Status</th><th scope="col">Não dominada</th></tr></thead>
+                <tbody id="frontierRows"></tbody>
+              </table>
+            </div>
+            <p id="frontierAlternativesNote" class="micro-note"></p>
+            <p class="micro-note">Metas abaixo da produção atual são hipotéticas. Os pontos além do máximo são dietas alternativas dominadas.</p>
+          </section>
+          <section id="stageSummaryCard" class="card stage-summary-card hidden" aria-live="polite">
+            <h2>Resumo das etapas</h2>
+            <p class="sub">Cálculos desta sessão.</p>
+            <div class="tablewrap" role="region" aria-label="Resumo das etapas calculadas" tabindex="0">
+              <table class="table stage-summary-table">
+                <thead><tr><th scope="col">Categoria</th><th scope="col">Peso (kg)</th><th scope="col">DMI (kg/dia)</th><th scope="col">NEL (Mcal/dia)</th><th scope="col">MP (g/dia)</th><th scope="col">Custo/animal/dia</th></tr></thead>
+                <tbody id="stageSummaryRows"></tbody>
+              </table>
+            </div>
+            <button class="btn sm" id="clearStageSummary" type="button">Limpar resumo</button>
+          </section>
+        </section>
+        <section id="resultsDietSection" class="results-section" aria-labelledby="resultsDietTitle">
+          <h2 id="resultsDietTitle" class="results-section-title">Informações sobre a dieta</h2>
+          <details id="technicalDetails" class="card technical-details hidden">
+            <summary>Detalhes técnicos</summary>
+            <div class="technical-grid">
+              <section>
+                <h3>Restrições</h3>
+                <div class="tablewrap"><table class="table"><thead><tr><th scope="col">Nutriente (unidade)</th><th scope="col">Mínimo exigido</th><th scope="col">Meta de dieta</th><th scope="col" id="technicalConstraintMaxHeading">Dieta maximizada</th><th scope="col">Máximo exigido</th></tr></thead><tbody id="technicalConstraintRows"></tbody></table></div>
+                <p id="technicalBasisNote" class="micro-note">Cálcio, fósforo, proteína metabolizável, FDN, gordura e energia usam a oferta das restrições NASEM; proteína bruta e amido usam a composição total.</p>
+              </section>
+              <section>
+                <h3>Emissões</h3>
+                <div class="tablewrap"><table class="table"><thead><tr><th scope="col">Indicador</th><th scope="col">Valor</th><th scope="col">Fonte</th></tr></thead><tbody id="technicalEmissionRows"></tbody></table></div>
+              </section>
+            </div>
+          </details>
+          <section class="card result-composition">
+            <h2>Composição da dieta</h2>
+            <p class="sub">Participação na matéria seca.</p>
+            <div id="compositionMode" class="composition-mode" role="group" aria-label="Dieta exibida">
+              <label class="composition-mode-option"><input type="radio" name="compositionMode" value="target" checked><span>Meta de produção</span></label>
+              <label class="composition-mode-option"><input type="radio" name="compositionMode" value="max"><span>Máximo viável</span></label>
+            </div>
+            <div id="bars" aria-hidden="true"></div>
+            <h3>Quantidades das dietas</h3>
+            <div class="tablewrap" role="region" aria-label="Quantidades das dietas" tabindex="0">
+              <table class="table diet-quantity-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2" scope="col">Ingrediente</th>
+                    <th colspan="3" scope="colgroup">Meta de produção</th>
+                    <th colspan="3" scope="colgroup" id="compositionMaxGroup" data-max-col>Máximo viável</th>
+                  </tr>
+                  <tr>
+                    <th scope="col">kg/dia</th><th scope="col">kg MS/dia</th><th scope="col">% MS</th>
+                    <th scope="col" data-max-col>kg/dia</th><th scope="col" data-max-col>kg MS/dia</th><th scope="col" data-max-col>% MS</th>
+                  </tr>
+                </thead>
+                <tbody id="compositionRows"></tbody>
+              </table>
+            </div>
+          </section>
         </section>
         </div>
       </div>
@@ -438,7 +518,27 @@ function translateFeedName(name) {
 
 'use strict';
 let feeds=[], lastResult=null,lastConfiguration=null;
-let nativeFeeds=[],previousRation=[],currentCompositionFeedId=null,lastRequirementsData=null;
+let nativeFeeds=[],previousRation=[],currentCompositionFeedId=null,lastRequirementsData=null,stageSummary=[],compositionMode='target';
+const LACTATING_CATEGORIES=['first_lactation_cow','multiparous_lactating_cow'];
+const HEIFER_CATEGORIES=['heifer_I','heifer_II','heifer_III'];
+const categoryLabels={first_lactation_cow:'Vaca de primeira lactação',multiparous_lactating_cow:'Vaca multípara',heifer_I:'Novilha I',heifer_II:'Novilha II',heifer_III:'Novilha III',dry_cow:'Vaca seca'};
+function categoryLabel(id){return translateSource(categoryLabels[id]||id);}
+function syncCategoryFields(){
+ const category=$('category').value,lactating=LACTATING_CATEGORIES.includes(category),heifer=HEIFER_CATEGORIES.includes(category),showPregnancy=category!=='heifer_I';
+ $('lactationPhaseField').classList.toggle('hidden',!lactating);
+ $('daysInMilkField').classList.toggle('hidden',!lactating);
+ $('productionGoals').classList.toggle('hidden',!lactating);
+ $('adgField').classList.toggle('hidden',!heifer);
+ $('pregnantField').classList.toggle('hidden',!showPregnancy);
+ if(!showPregnancy){$('pregnant').checked=false;$('profile-day_of_pregnancy').value='';}
+ for(const id of ['lactationPhase','profile-days_in_milk','milkReference','profile-milk_production','profile-milk_fat','profile-milk_true_protein','profile-milk_lactose','profile-process_based_phosphorus_requirement']){
+  const input=$(id); if(input)input.required=lactating;
+ }
+ const adg=$('profile-average_daily_gain_heifer');if(adg)adg.required=heifer;
+ const calving=$('profile-calving_interval');if(calving){calving.required=lactating||category==='dry_cow';const field=calving.closest('.field');if(field)field.classList.toggle('hidden',heifer);}
+ syncPregnancyField();
+ renderProfileSummary();
+}
 let analysisHasRun=false;
 let calculationState='idle', requestVersion=0, activeRequest=null;
 function invalidateResult(){requestVersion++;clearCalculatedDietContext();renderParameterOrigins();$('errorBox').classList.add('hidden');$('runStatus').textContent='';document.querySelectorAll('[aria-invalid="true"]').forEach(field=>field.removeAttribute('aria-invalid'));if(activeRequest){activeRequest.abort();activeRequest=null;const button=$('run');button.disabled=false;$('runLabel').textContent=translateSource('Calcular dieta otimizada');}lastResult=null;lastConfiguration=null;calculationState='idle';if(analysisHasRun)$('resultsStatus').textContent=translateSource('Dados alterados. Execute a análise novamente para obter resultados atuais.');$('results').classList.add('hidden');$('resultContent').classList.add('hidden');$('printResults').disabled=true;}
@@ -454,7 +554,12 @@ const publicMessages = {
   emissions_pair_required:'Informe ambos os valores de emissão ou deixe os dois vazios para cálculo automático.',
   invalid_milk_composition:'A soma de gordura, proteína verdadeira e lactose não pode passar de 100%.',
   invalid_emissions:'Informe valores numéricos não negativos para metano entérico (g/dia) e nitrogênio urinário (kg/dia).',
-  emissions_unavailable:'Não foi possível estimar as emissões da dieta. Revise os dados do animal e os ingredientes.'
+  emissions_unavailable:'Não foi possível estimar as emissões da dieta. Revise os dados do animal e os ingredientes.',
+  milk_target_below_reference:'A meta de leite não pode ser menor que a produção atual.',
+  milk_floor_violation:'A dieta de menor custo reduziria o potencial de produção abaixo da produção atual. Ajuste a meta ou os ingredientes.',
+  milk_potential_unavailable:'Não foi possível calcular o potencial de produção da dieta. Revise a composição e as emissões.',
+  ndf_required:'Informe a FDN da dieta para este estágio ou cadastre a dieta atual.',
+  pregnancy_not_applicable:'A novilha I não pode ser marcada como gestante.'
 };
 function ingredientName(id, fallback) {
   const name = nativeFeeds.find(feed => String(feed.id) === String(id))?.name || fallback;
@@ -668,6 +773,178 @@ Object.assign(i18nExtraMessages,{
  'A dieta atual é opcional. Informe os alimentos e as quantidades em kg de matéria seca por animal/dia para comparar as duas dietas.':'The current ration is optional. Enter ingredients and dry matter amounts per animal per day to compare the two rations.',
  'Consumo total de matéria seca':'Total dry matter intake'
 });
+Object.assign(i18nExtraMessages,{
+ 'Produção atual':'Current production',
+ 'Piso que a dieta otimizada não pode reduzir.':'Floor the optimized ration cannot reduce.',
+ 'Meta de produção':'Production target',
+ 'A meta de leite não pode ser menor que a produção atual.':'The milk target cannot be lower than current production.',
+ 'Leite permitido pela dieta':'Milk allowed by the ration',
+ 'Teto calculado pelo NASEM 2021 a partir da energia e da proteína metabolizável da ração. Não é uma previsão biológica.':'Ceiling computed by NASEM 2021 from the energy and metabolizable protein supplied by the ration. It is not a biological prediction.',
+ 'Permitido (mínimo)':'Allowed (minimum)',
+ 'Por energia (NEL)':'By energy (NEL)',
+ 'Por proteína (MP)':'By protein (MP)',
+ 'Margem':'Margin',
+ 'Produção atual mantida.':'Current production is maintained.',
+ 'A dieta permite aumentar a produção.':'The ration allows higher production.',
+ 'A dieta ficaria abaixo da produção atual.':'The ration would fall below current production.',
+ 'Não foi possível calcular o potencial da dieta.':'The ration potential could not be calculated.',
+ 'A dieta de menor custo reduziria o potencial de produção abaixo da produção atual. Ajuste a meta ou os ingredientes.':'The lowest-cost ration would reduce the production potential below current production. Adjust the target or the ingredients.',
+ 'Informe a FDN da dieta para este estágio ou cadastre a dieta atual.':'Enter the diet NDF for this stage or register the current ration.',
+ 'A novilha I não pode ser marcada como gestante.':'Heifer I cannot be marked as pregnant.',
+ 'Não foi possível calcular o potencial de produção da dieta. Revise a composição e as emissões.':'The ration production potential could not be calculated. Review composition and emissions.',
+ 'A produção atual é um piso separado da meta. A meta não pode ser menor que a produção atual. Depois de encontrar a dieta de menor custo, o cálculo verifica o potencial de produção da própria ração: se ele ficar abaixo da produção atual, a dieta é rejeitada.':'Current production is a floor separate from the target. The target cannot be lower than current production. After finding the lowest-cost ration, the calculation checks the ration production potential itself: if it falls below current production, the ration is rejected.',
+ 'Mín. kg MS/dia':'Min. kg DM/day',
+ 'Máx. kg MS/dia':'Max. kg DM/day',
+ 'Fixar':'Fix',
+ 'O máximo não pode ser menor que o mínimo.':'The maximum cannot be lower than the minimum.',
+ 'Fronteira custo × leite':'Cost × milk frontier',
+ 'Metas testadas pelo solver; os pontos não dominados mostram onde não há outra dieta testada mais barata para a mesma meta ou com mais leite pelo mesmo custo.':'Targets tested by the solver; non-dominated points show where no other tested ration is cheaper for the same target or yields more milk at the same cost.',
+ 'Meta (kg/dia)':'Target (kg/day)',
+ 'Custo/animal/dia':'Cost/animal/day',
+ 'Leite permitido':'Allowed milk',
+ 'Status':'Status',
+ 'Não dominada':'Non-dominated',
+ 'Varredura discreta da meta informada e de até sete metas superiores, em passos de 1 kg/dia. Cada ponto é uma solução local do SLSQP, não uma fronteira contínua nem um ótimo global.':'Discrete scan of the entered target and up to seven higher targets in 1 kg/day steps. Each point is a local SLSQP solution, not a continuous frontier or a global optimum.',
+ 'Falhou':'Failed',
+ 'Mantida':'Maintained',
+ 'Aumento':'Increase',
+ 'Abaixo da referência':'Below reference',
+ 'Indisponível':'Unavailable',
+ 'Gráfico de custo por meta de leite testada':'Cost chart by tested milk target',
+ 'Viável':'Feasible',
+ 'Os limites mínimo e máximo de inclusão são em kg MS por animal/dia. O padrão vem do catálogo NASEM e pode ser ajustado. O botão Fixar copia o mínimo para o máximo, mantendo o alimento em quantidade fixa na dieta.':'Minimum and maximum inclusion bounds are in kg DM per animal per day. Defaults come from the NASEM catalog and can be adjusted. The Fix button copies the minimum into the maximum, keeping the feed at a fixed amount in the ration.',
+ 'Os resultados apresentam uma tabela e um gráfico de custo por meta testada. Os pontos não dominados são destacados; a linha entre eles é apenas uma referência visual, pois a varredura é discreta.':'Results show a table and a cost chart by tested target. Non-dominated points are highlighted; the line between them is only a visual reference because the scan is discrete.',
+ 'O potencial de produção é o menor valor entre as rotas de energia líquida (NEL) e proteína metabolizável (MP). A energia por kg de leite usa 0,0929 × gordura + (0,0547 ÷ 0,93) × proteína verdadeira + 0,0395 × lactose, em Mcal/kg. A eficiência de 0,69 converte proteína metabolizável em proteína do leite. O resultado é um teto do modelo NASEM 2021, não uma previsão biológica da produção observada.':'Production potential is the lower of the net energy (NEL) and metabolizable protein (MP) routes. Energy per kg of milk uses 0.0929 × fat + (0.0547 ÷ 0.93) × true protein + 0.0395 × lactose, in Mcal/kg. The 0.69 efficiency converts metabolizable protein into milk protein. The result is a NASEM 2021 model ceiling, not a biological prediction of observed production.'
+});
+Object.assign(i18nExtraMessages,{
+ 'Categoria animal':'Animal category',
+ 'Vaca de primeira lactação':'First-lactation cow',
+ 'Vaca multípara':'Multiparous cow',
+ 'Novilha I':'Heifer I',
+ 'Novilha II':'Heifer II',
+ 'Novilha III':'Heifer III',
+ 'Vaca seca':'Dry cow',
+ 'Ganho diário (kg/dia)':'Daily gain (kg/day)',
+ 'Resumo das etapas':'Stage summary',
+ 'Cada linha é uma formulação calculada nesta sessão. O resumo não é uma simulação de transição entre etapas.':'Each row is a formulation computed in this session. The summary is not a simulation of transitions between stages.',
+ 'Categoria':'Category',
+ 'Peso (kg)':'Weight (kg)',
+ 'DMI (kg/dia)':'DMI (kg/day)',
+ 'NEL (Mcal/dia)':'NEL (Mcal/day)',
+ 'MP (g/dia)':'MP (g/day)',
+ 'Limpar resumo':'Clear summary',
+ 'Etapas de vida':'Life stages',
+ 'O motor aceita vaca em lactação, novilha I/II/III e vaca seca. Novilhas e vaca seca minimizam custo sujeito às exigências de mantença, crescimento, gestação e atividade. Não há meta, piso nem fronteira de leite nesses estágios.':'The engine accepts lactating cows, heifers I/II/III and dry cows. Heifers and dry cows minimize cost subject to maintenance, growth, pregnancy and activity requirements. There is no milk target, floor or frontier in these stages.',
+ 'O ganho diário de novilha é informado em kg/dia, a unidade usada pelo RuFaS. As emissões usam as rotas nativas do estágio. O resumo das etapas guarda apenas os cálculos desta sessão e não simula transições de vida.':'Heifer daily gain is entered in kg/day, the unit used by RuFaS. Emissions use the native route for each stage. The stage summary keeps only calculations from this session and does not simulate life transitions.',
+ 'A fronteira mostra o menor custo para cada nível de leite. Use Explorar dietas para ver também soluções viáveis mas não ótimas, com custo maior para o mesmo leite ou com menos leite.':'The frontier shows the lowest cost for each milk level. Use Explore diets to also see feasible but non-optimal solutions, with higher cost for the same milk or with less milk.',
+ 'Explorar dietas':'Explore diets',
+ 'Explorando…':'Exploring…',
+ 'Testando dietas alternativas…':'Testing alternative diets…',
+ 'Exploração concluída.':'Exploration complete.',
+ 'Fronteira ótima':'Optimal frontier',
+ 'Alternativa viável':'Feasible alternative',
+ 'Abaixo do piso':'Below the floor',
+ 'Leite permitido (kg/dia)':'Allowed milk (kg/day)',
+ 'Gráfico de custo por leite permitido':'Cost chart by allowed milk',
+ 'Dieta recomendada':'Recommended ration',
+ 'A varredura vai de sete metas abaixo a sete acima da referência, em passos de 1 kg/dia. Metas abaixo da produção atual são hipotéticas. Cada ponto é uma solução local do SLSQP, não uma fronteira contínua nem um ótimo global.':'The scan goes from seven targets below to seven above the reference, in 1 kg/day steps. Targets below current production are hypothetical. Each point is a local SLSQP solution, not a continuous frontier or a global optimum.'
+});
+Object.assign(i18nExtraMessages,{
+ 'Custo das dietas':'Diet cost',
+ 'Gráficos e tabelas':'Charts and tables',
+ 'Informações sobre a dieta':'Diet information',
+ 'Produção atual e potencial da dieta':'Current production and diet potential',
+ 'Máximo da dieta':'Diet maximum',
+ 'Calculado pelo NASEM 2021.':'Calculated by NASEM 2021.',
+ 'Menor custo por nível de leite.':'Lowest cost per milk level.',
+ 'Cálculos desta sessão.':'Calculations from this session.',
+ 'Participação na matéria seca.':'Share of dry matter.',
+ 'Preços informados.':'Prices provided.',
+ 'Sem moeda definida.':'No currency specified.',
+ 'Detalhes técnicos':'Technical details',
+ 'Restrição':'Constraint',
+ 'Folga':'Margin',
+ 'Oferta da dieta':'Ration supply',
+ 'Oferta':'Supply',
+ 'Indicador':'Indicator',
+ 'Fonte':'Source',
+ 'Atendida':'Met',
+ 'Violada':'Violated',
+ 'Abaixo da atual':'Below current',
+ 'Produção de leite (kg/dia)':'Milk production (kg/day)',
+ 'Gráfico de custo por produção de leite':'Cost chart by milk production',
+ 'A meta informada é a maior':'The entered target is the highest',
+ 'Composição da dieta':'Diet composition'
+});
+Object.assign(i18nExtraMessages,{
+ 'Restrições':'Constraints',
+ 'Emissões':'Emissions',
+ 'Nutriente':'Nutrient',
+ 'Valor':'Value',
+ 'Proteína metabolizável (mín.)':'Metabolizable protein (min.)',
+ 'Proteína metabolizável (máx.)':'Metabolizable protein (max.)',
+ 'FDN (mín.)':'NDF (min.)',
+ 'FDN (máx.)':'NDF (max.)',
+ 'FDN de forragem':'Forage NDF',
+ 'Gordura (máx.)':'Fat (max.)',
+ 'Consumo (mín.)':'Intake (min.)',
+ 'Consumo (máx.)':'Intake (max.)',
+ 'Metano entérico':'Enteric methane',
+ 'Nitrogênio urinário':'Urinary nitrogen',
+ 'Cálcio':'Calcium',
+ 'Fósforo':'Phosphorus',
+ 'Gordura':'Fat',
+ 'Matéria seca':'Dry matter',
+ 'Energia líquida':'Net energy',
+ 'Proteína metabolizável':'Metabolizable protein',
+ 'FDN':'NDF',
+ 'Proteína bruta':'Crude protein',
+ 'Amido':'Starch'
+});
+Object.assign(i18nExtraMessages,{
+ 'Fase':'Phase',
+ 'Custo animal/dia (R$)':'Animal cost/day (R$)',
+ 'Kg ingeridos (kg/dia)':'Intake (kg/day)',
+ 'Massa seca (kg/dia)':'Dry matter (kg/day)',
+ 'Leite produzido (L/dia)':'Milk produced (L/day)',
+ 'Custo minimizado':'Minimized cost',
+ 'Máximo de produção':'Maximum production',
+ 'Leite convertido de kg para L (1,03 kg/L).':'Milk converted from kg to L (1.03 kg/L).',
+ 'Leite não se aplica a este estágio.':'Milk does not apply to this stage.'
+});
+Object.assign(i18nExtraMessages,{
+ 'Nutriente (unidade)':'Nutrient (unit)',
+ 'Mínimo exigido':'Required minimum',
+ 'Dieta minimizando custo':'Cost-minimizing ration',
+ 'Dieta maximizando leite':'Milk-maximizing ration',
+ 'Máximo exigido':'Required maximum',
+ 'Consumo de MS':'DM intake'
+});
+Object.assign(i18nExtraMessages,{
+ 'Cálcio, fósforo, proteína metabolizável, FDN, gordura e energia usam a oferta das restrições NASEM; proteína bruta e amido usam a composição total.':'Calcium, phosphorus, metabolizable protein, NDF, fat and energy use the NASEM constraint supply; crude protein and starch use total composition.'
+});
+Object.assign(i18nExtraMessages,{
+ 'Dieta exibida':'Displayed ration',
+ 'Máximo viável':'Maximum feasible'
+});
+Object.assign(i18nExtraMessages,{
+ 'Quantidades das dietas':'Ration quantities'
+});
+Object.assign(i18nExtraMessages,{
+ 'Meta de dieta':'Diet target',
+ 'Dieta maximizada':'Maximized ration'
+});
+Object.assign(i18nExtraMessages,{
+ 'Metas abaixo da produção atual são hipotéticas. Os pontos além do máximo são dietas alternativas dominadas.':'Targets below current production are hypothetical. Points beyond the maximum are dominated alternative diets.',
+ 'Custo/animal/dia (R$)':'Cost/animal/day (R$)',
+ 'Leite (kg/dia)':'Milk (kg/day)',
+ 'Gráfico de leite por custo':'Milk by cost chart',
+ 'Alternativa dominada':'Dominated alternative'
+});
+Object.assign(i18nExtraMessages,{
+ 'Nenhuma meta viável. Revise ingredientes, limites e dados do animal.':'No feasible target. Review ingredients, bounds and animal data.',
+ 'Nenhuma meta viável para os dados atuais.':'No feasible target for the current data.'
+});
 const i18nEnglishToPtBr = Object.fromEntries([...Object.entries(i18nMessages),...Object.entries(i18nExtraMessages)].map(([source,target])=>[target,source]));
 let activeLocale = document.documentElement.lang === 'en-US' ? 'en-US' : 'pt-BR';
 const preferenceKeys = {language:'nutriplan.language.v1',theme:'nutriplan.theme.v1'};
@@ -770,6 +1047,7 @@ function setLocale(next, persist=true) {
   if (selector) selector.value = next;
   translateTree(document.body, false);
   renderProfileSummary();
+  renderStageSummary();
   if($('advancedFields').dataset.ready==='true')renderParameterOrigins();
   if (lastRequirementsData) renderRequirementTable(lastRequirementsData);
   renderFeedCategories();
@@ -969,7 +1247,9 @@ $('feedPicker').addEventListener('change',event=>{
   if(feeds.length>=25){target.checked=false;showError('Máximo de 25 ingredientes.');return;}
   invalidateResult();
   const preloadedPrice=feed.default_price===null||feed.default_price===undefined?'':String(feed.default_price);
-  feeds.push({rufas_id:feed.id,name:feed.name,price:preloadedPrice,min:0,max:10,source:'',source_date:'',currency:'',price_unit:'kg_as_fed',source_type:preloadedPrice?'preloaded':'manual'});
+  const lower=Number.isFinite(feed.lower_limit)?feed.lower_limit:0;
+  const upper=Number.isFinite(feed.limit)?feed.limit:100;
+  feeds.push({rufas_id:feed.id,name:feed.name,price:preloadedPrice,min:lower,max:upper,maxDefault:upper,locked:false,source:'',source_date:'',currency:'',price_unit:'kg_as_fed',source_type:preloadedPrice?'preloaded':'manual'});
   renderTable();
  }else{
   if(index<0){target.checked=false;return;}
@@ -992,11 +1272,17 @@ function priceUnitLabel(unit){
  return units[unit]?.[activeLocale==='en-US'?1:0]||'—';
 }
 function renderTable(matches){
- $('feedRows').innerHTML=feeds.map((feed,index)=>`<tr class="feed-row">
-  <td class="ingredient-name" data-label="${activeLocale==='en-US'?'Ingredient':'Ingrediente'}"><span>${esc(translateFeedName(feed.name))}</span></td>
-  <td class="money-col" data-label="${activeLocale==='en-US'?'Price value':'Valor do preço'}"><input aria-label="${activeLocale==='en-US'?'Price for':'Preço de'} ${esc(translateFeedName(feed.name))}" id="feed-price-${feed.rufas_id||index}" name="price" data-i="${index}" type="text" inputmode="decimal" step=".0001" min="0" value="${esc(feed.price??'')}"><small>${esc(feed.currency||(feed.source_type==='demonstration'?'u.m.':'BRL'))}/${priceUnitLabel(feed.price_unit||'kg_as_fed')}</small></td>
-  <td class="action-col" data-label="${activeLocale==='en-US'?'Action':'Ação'}"><button class="remove" type="button" data-remove="${index}" aria-label="${activeLocale==='en-US'?'Remove':'Remover'} ${esc(translateFeedName(feed.name))}">${activeLocale==='en-US'?'Remove':'Excluir'}</button></td>
- </tr>`).join('');
+ $('feedRows').innerHTML=feeds.map((feed,index)=>{
+  const locked=Boolean(feed.locked),name=esc(translateFeedName(feed.name));
+  return `<tr class="feed-row">
+  <td class="ingredient-name" data-label="${activeLocale==='en-US'?'Ingredient':'Ingrediente'}"><span>${name}</span></td>
+  <td class="money-col" data-label="${activeLocale==='en-US'?'Price value':'Valor do preço'}"><input aria-label="${activeLocale==='en-US'?'Price for':'Preço de'} ${name}" id="feed-price-${feed.rufas_id||index}" name="price" data-i="${index}" type="text" inputmode="decimal" step=".0001" min="0" value="${esc(feed.price??'')}"><small>${esc(feed.currency||(feed.source_type==='demonstration'?'u.m.':'BRL'))}/${priceUnitLabel(feed.price_unit||'kg_as_fed')}</small></td>
+  <td class="bounds-col" data-label="${activeLocale==='en-US'?'Min. kg DM/day':'Mín. kg MS/dia'}"><input aria-label="${activeLocale==='en-US'?'Minimum for':'Mínimo de'} ${name}" id="feed-min-${feed.rufas_id||index}" name="min" data-i="${index}" type="text" inputmode="decimal" min="0" step="any" value="${esc(feed.min??'')}"></td>
+  <td class="bounds-col" data-label="${activeLocale==='en-US'?'Max. kg DM/day':'Máx. kg MS/dia'}"><input aria-label="${activeLocale==='en-US'?'Maximum for':'Máximo de'} ${name}" id="feed-max-${feed.rufas_id||index}" name="max" data-i="${index}" type="text" inputmode="decimal" min="0" step="any" value="${esc(feed.max??'')}" ${locked?'disabled':''}></td>
+  <td class="fix-col" data-label="${activeLocale==='en-US'?'Fix':'Fixar'}"><label class="check"><input type="checkbox" data-fix="${index}" ${locked?'checked':''} aria-label="${activeLocale==='en-US'?'Fix inclusion of':'Fixar inclusão de'} ${name}"></label></td>
+  <td class="action-col" data-label="${activeLocale==='en-US'?'Action':'Ação'}"><button class="remove" type="button" data-remove="${index}" aria-label="${activeLocale==='en-US'?'Remove':'Remover'} ${name}">${activeLocale==='en-US'?'Remove':'Excluir'}</button></td>
+ </tr>`;
+ }).join('');
  $('selectedFeedCount').textContent=activeLocale==='en-US'?feeds.length+' selected':feeds.length+' selecionados';
  if(currentCompositionFeedId!==null&&!feeds.some(feed=>String(feed.rufas_id)===String(currentCompositionFeedId)))showFeedComposition(null);
  renderFeedPicker(matches);
@@ -1083,20 +1369,39 @@ $('previousRationRows').addEventListener('click',event=>{
  const next=Math.min(index,previousRation.length-1);
  ($('previousFeed-'+next)||$('addPreviousFeed')).focus();
 });
-$('feedRows').addEventListener('input',event=>{const input=event.target;if(!input.matches('[data-i][name]'))return;const feed=feeds[Number(input.dataset.i)];feed[input.name]=input.value;if(input.name==='price')markEditedPrice(feed);invalidateResult();});
+$('feedRows').addEventListener('input',event=>{const input=event.target;if(!input.matches('[data-i][name]'))return;const feed=feeds[Number(input.dataset.i)];feed[input.name]=input.value;if(input.name==='min'&&feed.locked){feed.max=input.value;const maxInput=$('feed-max-'+(feed.rufas_id||input.dataset.i));if(maxInput)maxInput.value=input.value;}if(input.name==='price')markEditedPrice(feed);invalidateResult();});
+$('feedRows').addEventListener('change',event=>{const box=event.target.closest('[data-fix]');if(!box)return;const feed=feeds[Number(box.dataset.fix)];feed.locked=box.checked;if(box.checked){feed.max=feed.min;}else{feed.max=Number.isFinite(feed.maxDefault)?feed.maxDefault:100;}invalidateResult();renderTable();});
 $('feedRows').addEventListener('click',event=>{const button=event.target.closest('[data-remove]');if(!button)return;feeds.splice(Number(button.dataset.remove),1);invalidateResult();renderTable();});
 function nativeScenario(){
- if(!$('lactationPhase').value)throw optimizationError('Selecione uma fase da lactação.','lactationPhase','animal');
- if($('pregnant').checked&&!$('profile-day_of_pregnancy').value)throw optimizationError('Informe o dia de gestação ou desmarque Gestante.','profile-day_of_pregnancy','animal');
+ const category=$('category').value,lactating=LACTATING_CATEGORIES.includes(category),heifer=HEIFER_CATEGORIES.includes(category),dry=category==='dry_cow';
+ if(lactating&&!$('lactationPhase').value)throw optimizationError('Selecione uma fase da lactação.','lactationPhase','animal');
+ if(category!=='heifer_I'&&$('pregnant').checked&&!$('profile-day_of_pregnancy').value)throw optimizationError('Informe o dia de gestação ou desmarque Gestante.','profile-day_of_pregnancy','animal');
  const parameters=collectProfileParameters(),selected=feeds.filter(feed=>feed.available!==false);
- const missing=Object.keys(profileLabels).filter(key=>!['day_of_pregnancy','ndf_percentage'].includes(key)&&parameters[key]===null);
+ let milkReference=null;
+ if(lactating){
+  milkReference=parseOptimizationNumber($('milkReference').value,'Produção atual (kg/dia)','milkReference',{min:0});
+  if(parameters.milk_production!=null&&parameters.milk_production+1e-4<milkReference)
+   throw optimizationError('A meta de leite não pode ser menor que a produção atual.','profile-milk_production','animal');
+ }
+ const required=new Set(['mature_body_weight','body_condition_score_5','housing','distance']);
+ if(lactating)for(const key of ['days_in_milk','milk_fat','milk_true_protein','milk_lactose','milk_production','calving_interval','process_based_phosphorus_requirement'])required.add(key);
+ if(heifer)required.add('average_daily_gain_heifer');
+ if(dry)required.add('calving_interval');
+ if(!lactating&&!previousRation.length)required.add('ndf_percentage');
+ const missing=[...required].filter(key=>parameters[key]===null);
  if(missing.length)throw optimizationError((activeLocale==='en-US'?'Required data: ':'Dados obrigatórios: ')+missing.map(key=>translateSource(profileLabels[key])).join(', '),'profile-'+missing[0],'animal');
  if(selected.length===1||selected.some(feed=>!feed.rufas_id))throw optimizationError('Selecione ao menos dois alimentos ou deixe a seleção vazia.','feedSearch');
  const unpriced=selected.filter(feed=>feed.price==null||String(feed.price).trim()==='');
  if(unpriced.length)throw optimizationError('Não é possível calcular: sem preço documentado para '+unpriced.map(feed=>translateFeedName(ingredientName(feed.rufas_id,feed.name))).join(', ')+'.','feed-price-'+unpriced[0].rufas_id);
+ selected.forEach(feed=>{
+  const minimum=parseOptimizationNumber(feed.min??0,'Mín. kg MS/dia','feed-min-'+feed.rufas_id,{min:0},'feeds');
+  const maximum=parseOptimizationNumber(feed.max??(feed.maxDefault??100),'Máx. kg MS/dia','feed-max-'+feed.rufas_id,{min:0},'feeds');
+  if(maximum<minimum)throw optimizationError('O máximo não pode ser menor que o mínimo.','feed-max-'+feed.rufas_id,'feeds');
+ });
  if(new Set(selected.map(feed=>feed.rufas_id)).size!==selected.length)throw Error('Selecione cada ingrediente apenas uma vez.');
  if(selected.some(feed=>!['demonstration','preloaded','current'].includes(feed.source_type)&&(!feed.currency||!feed.source_date)))throw Error('Informe moeda, data e fonte dos preços não demonstrativos.');
- const payload={evaluate_milk_targets:true,animal_category:$('category').value,body_weight_kg:parseOptimizationNumber($('weight').value,'Peso corporal (kg)','weight',{min:0,positive:true}),parameters,feeds:selected.map(feed=>({rufas_id:Number(feed.rufas_id),price_record:{amount:parseOptimizationNumber(feed.price,'Valor do preço','feed-price-'+feed.rufas_id,{min:0},'feeds'),currency:feed.currency||null,unit:feed.price_unit||'kg_as_fed',source_type:feed.source_type||'manual',source:feed.source,reference_date:feed.source_date||null,geography:feed.geography||'',notes:feed.price_notes||''},minimum_kg_dm:parseOptimizationNumber(feed.min,'Novo mínimo (kg MS/dia)',null,{min:0},'feeds'),maximum_kg_dm:parseOptimizationNumber(feed.max,'Novo máximo (kg MS/dia)',null,{min:0},'feeds'),available:true}))};
+ const payload={animal_category:category,body_weight_kg:parseOptimizationNumber($('weight').value,'Peso corporal (kg)','weight',{min:0,positive:true}),parameters,feeds:selected.map(feed=>({rufas_id:Number(feed.rufas_id),price_record:{amount:parseOptimizationNumber(feed.price,'Valor do preço','feed-price-'+feed.rufas_id,{min:0},'feeds'),currency:feed.currency||null,unit:feed.price_unit||'kg_as_fed',source_type:feed.source_type||'manual',source:feed.source,reference_date:feed.source_date||null,geography:feed.geography||'',notes:feed.price_notes||''},minimum_kg_dm:parseOptimizationNumber(feed.min,'Novo mínimo (kg MS/dia)',null,{min:0},'feeds'),maximum_kg_dm:parseOptimizationNumber(feed.max,'Novo máximo (kg MS/dia)',null,{min:0},'feeds'),available:true}))};
+ if(lactating){payload.evaluate_milk_targets=true;payload.milk_reference_kg_day=milkReference;}
  const previous=previousRationPayload();
  if(previous)Object.assign(payload,previous,{confirm_catalog_prices:$('confirmCatalogPrices').checked});
  const methane=$('nativeMethane').value.trim(),urine=$('nativeUrineNitrogen').value.trim();
@@ -1133,6 +1438,8 @@ async function runOptimization(){
   if(res.ok&&(!Array.isArray(res.ingredients)||!Number.isFinite(res.cost_day)))throw Error('O servidor retornou um resultado incompleto.');
   lastResult=res;
   lastConfiguration=payload;
+  compositionMode='target';
+  if(res.ok)recordStageResult(res,payload);
   showResults(res);
   if(res.ok)displayCalculatedDietContext(res);
   $('results').classList.remove('hidden');
@@ -1145,55 +1452,322 @@ async function runOptimization(){
  }finally{if(version===requestVersion){activeRequest=null;btn.disabled=false;$('runLabel').textContent=translateSource('Calcular dieta otimizada');}}
 }
 $('run').addEventListener('click',runOptimization);
-function showResults(r){
- $('resultContent').classList.remove('hidden');
- $('solutionDetails').classList.toggle('hidden',!r.ok);
- const reference=r.reference_result;
- const highest=r.highest_feasible_result;
- $('resultHeading').textContent=translateSource(!reference?'Dieta de menor custo':
-  !r.ok?'Resultados da avaliação':reference.ok?'Dieta para a meta informada':'Maior meta viável testada');
- const showHigher=Boolean(reference?.ok&&highest&&highest.milk_target>reference.milk_target);
- const summary=$('highestTargetSummary');
- summary.classList.toggle('hidden',!r.ok||!reference);
- if(!r.ok)return;
- $('costDay').textContent=money(r.cost_day);
- $('rDmi').textContent=fmt(r.dmi,2);
- $('costBasisNotice').textContent=translateSource(r.currency?'Custo calculado com os preços informados.':'Custo expresso em unidades monetárias sem moeda definida.');
- const milk=r.milk_target ?? lastConfiguration?.parameters?.milk_production;
- $('targetMilk').textContent=milk==null?'—':fmt(milk,3);
- const included=r.ingredients.filter(f=>f.kg_dm>1e-6);
+function frontierStatusLabel(row){
+ if(row.status!=='success')return translateSource('Falhou');
+ const labels={maintained:'Mantida',increased:'Aumento',below_reference:'Abaixo da atual',unavailable:'Indisponível'};
+ return translateSource(labels[row.milk_status]||'—');
+}
+function renderFrontierChart(rows,currency,referenceMilk,alternatives,explorationFrontier,recommendedMilk,beyondSolutions){
+ const chart=$('frontierChart');
+ if(!chart)return;
+ const targetPoints=rows
+  .filter(row=>row.status==='success'&&Number.isFinite(row.cost_day)&&(Number.isFinite(row.milk_allowed)||Number.isFinite(row.milk_target)))
+  .map(row=>({x:Number(row.cost_day),y:Number.isFinite(row.milk_allowed)?row.milk_allowed:row.milk_target,target:row.milk_target,
+   frontier:Boolean(row.non_dominated),below:Boolean(row.below_reference),kind:'target'}));
+ const alternativeMap=new Map();
+ for(const item of [...(alternatives||[]),...(beyondSolutions||[])]){
+  if(!Number.isFinite(item.cost_day)||!Number.isFinite(item.milk_allowed))continue;
+  const key=Math.round(item.cost_day*10000)+'|'+Math.round(item.milk_allowed*10000);
+  if(alternativeMap.has(key))continue;
+  alternativeMap.set(key,{x:Number(item.cost_day),y:Number(item.milk_allowed),frontier:false,
+   dominated:Boolean(item.dominated),below:Boolean(item.below_reference),kind:'alternative'});
+ }
+ const alternativePoints=[...alternativeMap.values()];
+ const feasible=[...targetPoints,...alternativePoints];
+ if(!feasible.length){
+  chart.innerHTML=`<p class="micro-note">${translateSource('Nenhuma meta viável para os dados atuais.')}</p>`;
+  return;
+ }
+ const xs=feasible.map(point=>point.x);
+ const ys=feasible.map(point=>point.y);if(Number.isFinite(referenceMilk))ys.push(referenceMilk);
+ let minX=feasible.length?Math.min(...xs):0,maxX=feasible.length?Math.max(...xs):1;
+ let minY=feasible.length?Math.min(...ys):0,maxY=feasible.length?Math.max(...ys):1;
+ if(maxX-minX<1e-6)maxX=minX+1;
+ if(maxY-minY<1e-6)maxY=minY+1;
+ const width=640,height=260,pad={l:64,r:20,t:24,b:44};
+ const sx=value=>pad.l+(value-minX)/(maxX-minX)*(width-pad.l-pad.r);
+ const sy=value=>height-pad.b-(value-minY)/(maxY-minY)*(height-pad.t-pad.b);
+ let referenceMarkup='';
+ if(Number.isFinite(referenceMilk)){
+  const ry=sy(referenceMilk);
+  if(ry>=pad.t-0.5&&ry<=height-pad.b+0.5)referenceMarkup=`<line class="frontier-reference-line" x1="${pad.l}" y1="${ry.toFixed(1)}" x2="${width-pad.r}" y2="${ry.toFixed(1)}"></line><text class="frontier-label frontier-reference-label" x="${pad.l+4}" y="${(ry-4).toFixed(1)}">${translateSource('Produção atual')}</text>`;
+ }
+ let linePoints=(Array.isArray(explorationFrontier)&&explorationFrontier.length>1
+  ?explorationFrontier.map(point=>({x:point.cost_day,y:point.milk_allowed}))
+  :targetPoints.filter(point=>point.frontier).map(point=>({x:point.x,y:point.y})))
+  .filter(point=>Number.isFinite(point.x)&&Number.isFinite(point.y)).sort((a,b)=>a.x-b.x);
+ const line=linePoints.length>1?`<polyline class="frontier-line" points="${linePoints.map(point=>sx(point.x).toFixed(1)+','+sy(point.y).toFixed(1)).join(' ')}"/>`:'';
+ const circles=alternativePoints.map(point=>{
+  const title=`${fmt(point.y,3)} ${translateSource('kg/dia')} · ${formatMoney(point.x,currency)} · ${translateSource(point.dominated?'Alternativa dominada':'Alternativa viável')}`;
+  return `<circle class="frontier-point is-alternative${point.dominated?' is-dominated':''}${point.below?' is-below-reference':''}" cx="${sx(point.x).toFixed(1)}" cy="${sy(point.y).toFixed(1)}" r="${point.dominated?3:4}"><title>${esc(title)}</title></circle>`;
+ }).join('')+targetPoints.map(point=>{
+  const title=`${fmt(point.y,3)} ${translateSource('kg/dia')} · ${formatMoney(point.x,currency)}`;
+  return `<circle class="frontier-point is-target${point.frontier?' is-frontier':''}${point.below?' is-below-reference':''}" cx="${sx(point.x).toFixed(1)}" cy="${sy(point.y).toFixed(1)}" r="${point.frontier?6:4}"><title>${esc(title)}</title></circle>`;
+ }).join('');
+ const recommended=Number.isFinite(recommendedMilk)?targetPoints.find(point=>Math.abs(point.target-recommendedMilk)<1e-6):null;
+ const recommendedMarkup=recommended?`<circle class="frontier-recommended" cx="${sx(recommended.x).toFixed(1)}" cy="${sy(recommended.y).toFixed(1)}" r="9"><title>${esc(translateSource('Dieta recomendada'))}</title></circle>`:'';
+ const ticks=`<text class="frontier-label" x="${pad.l}" y="${height-24}">${fmt(minX,2)}</text>
+ <text class="frontier-label" x="${width-pad.r}" y="${height-24}" text-anchor="end">${fmt(maxX,2)}</text>
+ <text class="frontier-label" x="${pad.l-6}" y="${height-pad.b}" text-anchor="end">${fmt(minY,1)}</text>
+ <text class="frontier-label" x="${pad.l-6}" y="${pad.t+4}" text-anchor="end">${fmt(maxY,1)}</text>`;
+ const viableLegend=alternativePoints.some(point=>!point.dominated)?`<span><i class="frontier-dot is-alternative"></i>${translateSource('Alternativa viável')}</span>`:'';
+ const dominatedLegend=alternativePoints.some(point=>point.dominated)?`<span><i class="frontier-dot is-dominated"></i>${translateSource('Alternativa dominada')}</span>`:'';
+ chart.innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(translateSource('Gráfico de leite por custo'))}">
+  <line class="frontier-axis" x1="${pad.l}" y1="${height-pad.b}" x2="${width-pad.r}" y2="${height-pad.b}"></line>
+  <line class="frontier-axis" x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${height-pad.b}"></line>
+  ${referenceMarkup}${ticks}${line}${circles}${recommendedMarkup}
+  <text class="frontier-label" x="${width-pad.r}" y="${height-8}" text-anchor="end">${translateSource('Custo/animal/dia (R$)')}</text>
+  <text class="frontier-label" x="${pad.l}" y="${pad.t-8}">${translateSource('Leite (kg/dia)')}</text>
+ </svg><div class="frontier-legend"><span><i class="frontier-dot is-frontier"></i>${translateSource('Fronteira ótima')}</span>${viableLegend}${dominatedLegend}<span><i class="frontier-dot is-below"></i>${translateSource('Abaixo do piso')}</span><span><i class="frontier-line-swatch"></i>${translateSource('Produção atual')}</span></div>`;
+}
+function renderFrontier(r,reference,highest){
+ const card=$('frontierCard'),body=$('frontierRows');
+ if(!card||!body)return;
+ const rows=Array.isArray(r.target_results)?r.target_results:[];
+ if(!rows.length){card.classList.add('hidden');return;}
+ const alternatives=Array.isArray(r.alternative_solutions)?r.alternative_solutions:[];
+ const beyond=Array.isArray(r.beyond_optimum_solutions)?r.beyond_optimum_solutions:[];
+ const exploreStatus=$('exploreDietsStatus');if(exploreStatus)exploreStatus.textContent='';
+ const refTarget=reference?.milk_target,highTarget=highest?.milk_target;
+ const anySuccess=rows.some(row=>row.status==='success');
+ body.innerHTML=rows.map(row=>{
+  const cls=[row.non_dominated?'is-frontier':'',row.milk_target===refTarget?'is-reference':'',row.milk_target===highTarget?'is-highest':'',row.below_reference?'is-below-floor':''].filter(Boolean).join(' ');
+  return `<tr class="${cls}"><th scope="row">${fmt(row.milk_target,3)}</th><td>${Number.isFinite(row.cost_day)?formatMoney(row.cost_day,r.currency):'—'}</td><td>${Number.isFinite(row.milk_allowed)?fmt(row.milk_allowed,3):'—'}</td><td>${Number.isFinite(row.milk_floor_margin)?((row.milk_floor_margin>=0?'+':'')+fmt(row.milk_floor_margin,3)):'—'}</td><td title="${esc(row.error_code||'')}">${esc(frontierStatusLabel(row))}</td><td>${row.non_dominated?'✓':'—'}</td></tr>`;
+ }).join('');
+ const dominated=alternatives.filter(item=>item.dominated).length;
+ const note=$('frontierAlternativesNote');
+ if(note){
+  if(!anySuccess){
+   note.textContent=translateSource('Nenhuma meta viável. Revise ingredientes, limites e dados do animal.');
+  }else{
+   const parts=[];
+   if(alternatives.length)parts.push(activeLocale==='en-US'?`${alternatives.length} feasible alternative diets; ${dominated} dominated.`:`${alternatives.length} dietas alternativas viáveis; ${dominated} dominadas.`);
+   if(beyond.length)parts.push(activeLocale==='en-US'?`${beyond.length} dominated diets beyond the maximum.`:`${beyond.length} dietas dominadas além do máximo.`);
+   note.textContent=parts.join(' · ');
+  }
+ }
+ const recommendMilk=Number.isFinite(r.milk_target)?r.milk_target:refTarget;
+ renderFrontierChart(rows,r.currency,r.milk_potential?.reference_kg_day,alternatives,r.exploration_frontier||[],recommendMilk,beyond);
+ card.classList.remove('hidden');
+}
+async function exploreDiets(){
+ if(!lastConfiguration)return;
+ const button=$('exploreDiets'),status=$('exploreDietsStatus');
+ if(!button||button.disabled)return;
+ const original=button.textContent;
+ button.disabled=true;button.textContent=translateSource('Explorando…');
+ if(status)status.textContent=translateSource('Testando dietas alternativas…');
+ try{
+  const payload={...lastConfiguration,explore_alternatives:true,alternative_samples:300};
+  const response=await fetch('/api/rufas-native',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();
+  if(!response.ok||!data.ok)throw Error(apiMessage(data));
+  lastResult=data;lastConfiguration=payload;
+  showResults(data);
+  if(status)status.textContent=translateSource('Exploração concluída.');
+ }catch(error){if(status)status.textContent=localMessage(error);}
+ finally{button.disabled=false;button.textContent=original;}
+}
+$('exploreDiets').addEventListener('click',exploreDiets);
+function recordStageResult(result,payload){
+ const category=result.animal_category||payload.animal_category;
+ const row={category,weight:Number(payload.body_weight_kg),dmi:result.dmi,
+  net_energy:result.requirements?.net_energy,protein:result.requirements?.metabolizable_protein,
+  cost:result.cost_day,currency:result.currency};
+ const index=stageSummary.findIndex(item=>item.category===category);
+ if(index>=0)stageSummary[index]=row;else stageSummary.push(row);
+ renderStageSummary();
+}
+function renderStageSummary(){
+ const card=$('stageSummaryCard'),body=$('stageSummaryRows');
+ if(!card||!body)return;
+ if(!stageSummary.length){card.classList.add('hidden');body.innerHTML='';return;}
+ body.innerHTML=stageSummary.map(row=>`<tr><th scope="row">${esc(categoryLabel(row.category))}</th><td>${Number.isFinite(row.weight)?fmt(row.weight,1):'—'}</td><td>${Number.isFinite(row.dmi)?fmt(row.dmi,2):'—'}</td><td>${Number.isFinite(row.net_energy)?fmt(row.net_energy,2):'—'}</td><td>${Number.isFinite(row.protein)?fmt(row.protein,1):'—'}</td><td>${Number.isFinite(row.cost)?formatMoney(row.cost,row.currency):'—'}</td></tr>`).join('');
+ card.classList.remove('hidden');
+}
+function sumAsFed(ingredients){
+ return (ingredients||[]).reduce((total,item)=>total+(Number.isFinite(Number(item.kg_as_fed))?Number(item.kg_as_fed):0),0);
+}
+function dietCostRowData(result){
+ return {
+  cost:result?.cost_day,kgFed:sumAsFed(result?.ingredients),dm:result?.dmi,
+  milkL:Number.isFinite(result?.milk_target)?result.milk_target/1.03:null,
+  currency:result?.currency??null
+ };
+}
+function renderDietCostTable(result,highest){
+ const body=$('dietCostRows'),milkHeading=$('dietCostMilkHeading'),note=$('dietCostNote');
+ if(!body)return;
+ const lactating=result.lactating!==false;
+ const primary=dietCostRowData(result);
+ const hasHigher=Boolean(lactating&&highest&&highest.ok!==false&&Number.isFinite(highest.milk_target));
+ const maximum=hasHigher?dietCostRowData(highest):primary;
+ milkHeading.classList.toggle('hidden',!lactating);
+ const rows=[{label:'Meta de dieta',data:primary}];
+ if(lactating)rows.push({label:'Dieta maximizada',data:maximum});
+ body.innerHTML=rows.map(({label,data})=>`<tr><th scope="row">${esc(translateSource(label))}</th><td>${formatMoney(data.cost,data.currency)}</td><td>${Number.isFinite(data.kgFed)?fmt(data.kgFed,1):'—'}</td><td>${Number.isFinite(data.dm)?fmt(data.dm,1):'—'}</td>${lactating?`<td>${Number.isFinite(data.milkL)?fmt(data.milkL,1):'—'}</td>`:''}</tr>`).join('');
+ let text=lactating?translateSource('Leite convertido de kg para L (1,03 kg/L).'):translateSource('Leite não se aplica a este estágio.');
+ if(lactating&&!hasHigher)text+=' '+translateSource('A meta informada é a maior.');
+ note.textContent=text;
+}
+function renderCompositionTable(r,highest){
+ const body=$('compositionRows');
+ if(!body)return;
+ const lactating=r.lactating!==false;
+ document.querySelectorAll('[data-max-col]').forEach(element=>element.classList.toggle('hidden',!lactating));
+ const target=(r.ingredients||[]).filter(feed=>feed.kg_dm>1e-6);
+ const maxSource=lactating&&highest&&Array.isArray(highest.ingredients)?highest.ingredients:target;
+ const maximum=maxSource.filter(feed=>feed.kg_dm>1e-6);
+ const targetMap=new Map(target.map(feed=>[feed.id,feed]));
+ const maxMap=new Map(maximum.map(feed=>[feed.id,feed]));
+ const ids=[...targetMap.keys(),...[...maxMap.keys()].filter(id=>!targetMap.has(id))];
+ const cell=(feed,key,percent)=>feed?(percent?fmt(feed.percent_dm,1)+'%':fmt(feed[key],3)):'—';
+ body.innerHTML=ids.map(id=>{
+  const targetFeed=targetMap.get(id),maxFeed=maxMap.get(id);
+  const name=ingredientName(id,(targetFeed??maxFeed).name);
+  return `<tr><th scope="row">${esc(name)}</th><td>${cell(targetFeed,'kg_as_fed')}</td><td>${cell(targetFeed,'kg_dm')}</td><td>${cell(targetFeed,'percent_dm',true)}</td>${lactating?`<td>${cell(maxFeed,'kg_as_fed')}</td><td>${cell(maxFeed,'kg_dm')}</td><td>${cell(maxFeed,'percent_dm',true)}</td>`:''}</tr>`;
+ }).join('')||`<tr><td colspan="${lactating?7:4}">—</td></tr>`;
+}
+function renderComposition(r,highest){
+ const selector=$('compositionMode');
+ const lactating=r.lactating!==false;
+ if(selector)selector.classList.toggle('hidden',!lactating);
+ if(!lactating)compositionMode='target';
+ document.querySelectorAll('input[name="compositionMode"]').forEach(input=>{input.checked=input.value===compositionMode;});
+ renderCompositionBars(r,highest);
+ renderCompositionTable(r,highest);
+}
+function renderCompositionBars(r=lastResult,highest=r?.highest_feasible_result){
+ const source=compositionMode==='max'&&highest&&Array.isArray(highest.ingredients)?highest.ingredients:(r?.ingredients||[]);
+ const included=source.filter(feed=>feed.kg_dm>1e-6);
  $('bars').innerHTML=included.map(feed=>{
   const share=Math.max(0,Math.min(100,feed.percent_dm));
   return `<div class="bar-line"><span>${esc(ingredientName(feed.id,feed.name))}</span><div class="bar-shell"><div class="bar-fill" style="width:${share}%"></div></div><span class="bar-val">${fmt(share,1)}%</span></div>`;
  }).join('');
- const referenceFeeds=new Map(included.map(feed=>[feed.id,feed]));
- const highestFeeds=new Map(showHigher?highest.ingredients.filter(feed=>feed.kg_dm>1e-6).map(feed=>[feed.id,feed]):[]);
- const ids=[...new Set([...referenceFeeds.keys(),...highestFeeds.keys()])];
- const showExtraAmounts=showHigher&&ids.some(id=>Math.abs((referenceFeeds.get(id)?.kg_dm??0)-(highestFeeds.get(id)?.kg_dm??0))>1e-6);
- $('primaryDmHeading').textContent=translateSource(showExtraAmounts?'Meta informada (kg MS/dia)':'kg MS/dia');
- $('highestDmHeading').classList.toggle('hidden',!showExtraAmounts);
- $('resultRows').innerHTML=ids.map(id=>{
-  const base=referenceFeeds.get(id), alternative=highestFeeds.get(id);
-  const name=ingredientName(id,(base??alternative).name);
-  return `<tr><th scope="row">${esc(name)}</th><td>${base?fmt(base.kg_dm,3):'—'}</td><td>${base?fmt(base.kg_as_fed,3):'—'}</td><td>${base?fmt(base.percent_dm,1)+'%':'—'}</td>${showExtraAmounts?`<td>${alternative?fmt(alternative.kg_dm,3):'—'}</td>`:''}</tr>`;
- }).join('');
- if(reference){
-  if(showHigher){
-   const delta=highest.cost_day-reference.cost_day;
-   summary.innerHTML=`<h2>Maior meta viável testada</h2><p><strong>${fmt(highest.milk_target,3)} ${translateSource('kg/dia')}</strong> · ${translateSource('Custo por animal/dia')} · ${formatMoney(highest.cost_day,r.currency)} · ${fmt(highest.dmi)} ${translateSource('kg MS/dia')}</p>
-   <p>${translateSource('Diferença em relação à meta informada')} · +${fmt(highest.milk_target-reference.milk_target,3)} ${translateSource('kg/dia')} · ${delta>0?'+':''}${formatMoney(delta,r.currency)}</p>
-   ${showExtraAmounts?'':'<p>As duas metas usam as mesmas quantidades por ingrediente.</p>'}`;
-  }else{
-   summary.textContent=translateSource(reference.ok?'A meta informada também é a maior meta viável testada.':'O solver não encontrou solução para a meta informada.');
-  }
+}
+document.querySelectorAll('input[name="compositionMode"]').forEach(input=>input.addEventListener('change',event=>{compositionMode=event.target.value;renderCompositionBars();}));
+function showResults(r){
+ $('resultContent').classList.remove('hidden');
+ const reference=r.reference_result;
+ const highest=r.highest_feasible_result;
+ const lactating=r.lactating!==false;
+ const hasTargets=Array.isArray(r.target_results)&&r.target_results.length>0;
+ $('solutionDetails').classList.toggle('hidden',!r.ok&&!hasTargets);
+ $('resultsCostSection').classList.toggle('hidden',!r.ok);
+ $('resultsDietSection').classList.toggle('hidden',!r.ok);
+ $('resultsChartsSection').classList.remove('hidden');
+ $('resultHeading').textContent=lactating?translateSource(!reference?'Dieta de menor custo':
+  !r.ok?'Resultados da avaliação':reference.ok?'Dieta para a meta informada':'Maior meta viável testada'):translateSource('Dieta de menor custo')+' — '+categoryLabel(r.animal_category);
+ if(!r.ok){
+  renderFrontier(r,reference,highest);
+  return;
  }
-
+ renderDietCostTable(r,highest);
+ renderFrontier(r,reference,highest);
+ renderTechnicalDetails(r,highest);
+ renderComposition(r,highest);
+}
+function technicalUnitLabel(unit){
+ const labels={'Mcal/day':activeLocale==='en-US'?'Mcal/day':'Mcal/dia','g/day':activeLocale==='en-US'?'g/day':'g/dia','kg/day':activeLocale==='en-US'?'kg/day':'kg/dia','% DM':activeLocale==='en-US'?'% DM':'% MS'};
+ return labels[unit]||unit||'—';
+}
+function renderTechnicalDetails(r,highest){
+ const details=$('technicalDetails');
+ if(!details)return;
+ const lactating=r.lactating!==false;
+ const primaryRaw=Array.isArray(r.constraints)?r.constraints:[];
+ const maxResult=highest&&Array.isArray(highest.constraints)?highest:r;
+ const maximumRaw=Array.isArray(maxResult.constraints)?maxResult.constraints:[];
+ const requirements=r.requirements||{};
+ const maxRequirements=maxResult.requirements||requirements;
+ const processP=Number(lastConfiguration?.parameters?.process_based_phosphorus_requirement);
+ const unitForName={
+  calcium_constraint:'g/day',phosphorus_constraint:'g/day',
+  protein_constraint_lower:'g/day',protein_constraint_upper:'g/day',
+  NDF_constraint_lower:'% DM',NDF_constraint_upper:'% DM',forage_NDF_constraint:'% DM',
+  fat_constraint:'% DM',DMI_constraint_lower:'kg/day',DMI_constraint_upper:'kg/day',
+  NASEM_net_energy_constraint:'Mcal/day'
+ };
+ const boundsFor=(name,req)=>{
+  const protein=Number(req.metabolizable_protein)||0,dryMatter=Number(req.dry_matter)||0;
+  switch(name){
+   case 'calcium_constraint':return{minimum:Number(req.calcium)||0,maximum:null};
+   case 'phosphorus_constraint':return{minimum:Math.max(Number(req.phosphorus)||0,Number.isFinite(processP)?processP:0),maximum:null};
+   case 'protein_constraint_lower':return{minimum:protein,maximum:null};
+   case 'protein_constraint_upper':return{minimum:null,maximum:protein*1.5};
+   case 'NDF_constraint_lower':return{minimum:25,maximum:null};
+   case 'NDF_constraint_upper':return{minimum:null,maximum:45};
+   case 'forage_NDF_constraint':return{minimum:15,maximum:null};
+   case 'fat_constraint':return{minimum:null,maximum:7};
+   case 'DMI_constraint_lower':return{minimum:dryMatter*0.7,maximum:null};
+   case 'DMI_constraint_upper':return{minimum:null,maximum:dryMatter*1.3};
+   case 'NASEM_net_energy_constraint':return{minimum:Number(req.net_energy)||0,maximum:null};
+   default:return{minimum:null,maximum:null};
+  }
+ };
+ const enrich=(list,req)=>list.map(item=>{
+  const derived=boundsFor(item.name,req);
+  const minimum=item.minimum!==undefined?item.minimum:derived.minimum;
+  const maximum=item.maximum!==undefined?item.maximum:derived.maximum;
+  let supply=item.supply;
+  if(!Number.isFinite(supply)){
+   if(Number.isFinite(item.slack)&&minimum!=null)supply=minimum+item.slack;
+   else if(Number.isFinite(item.slack)&&maximum!=null)supply=maximum-item.slack;
+   else supply=null;
+  }
+  return {...item,minimum,maximum,supply,unit:item.unit||unitForName[item.name]||null};
+ });
+ const primary=enrich(primaryRaw,requirements);
+ const maximum=enrich(maximumRaw,maxRequirements);
+ const find=(list,name)=>list.find(item=>item.name===name);
+ const value=item=>Number.isFinite(item)?fmt(item,2):'—';
+ const supplyFor=(list,lower,upper)=>{
+  const lowerItem=lower?find(list,lower):null;
+  const upperItem=upper?find(list,upper):null;
+  return lowerItem?.supply??upperItem?.supply??null;
+ };
+ const constraintRow=(label,unit,lower,upper)=>{
+  const lowerItem=lower?find(primary,lower):null;
+  const upperItem=upper?find(primary,upper):null;
+  const minimum=lowerItem?.minimum??upperItem?.minimum??null;
+  const maximumValue=upperItem?.maximum??lowerItem?.maximum??null;
+  const current=supplyFor(primary,lower,upper);
+  const other=supplyFor(maximum,lower,upper);
+  return `<tr><td>${esc(translateSource(label))} (${esc(technicalUnitLabel(unit))})</td><td>${value(minimum)}</td><td>${value(current)}</td>${lactating?`<td>${value(other)}</td>`:''}<td>${value(maximumValue)}</td></tr>`;
+ };
+ const supplyRow=(label,key)=>{
+  const current=(r.nutrient_supply||{})[key]||{};
+  const other=(maxResult.nutrient_supply||{})[key]||{};
+  const unit=technicalUnitLabel(current.unit||other.unit||'kg/day');
+  return `<tr><td>${esc(translateSource(label))} (${esc(unit)})</td><td>—</td><td>${value(current.value)}</td>${lactating?`<td>${value(other.value)}</td>`:''}<td>—</td></tr>`;
+ };
+ const rows=[
+  constraintRow('Matéria seca','kg/day','DMI_constraint_lower','DMI_constraint_upper'),
+  supplyRow('Proteína bruta','crude_protein'),
+  constraintRow('Proteína metabolizável','g/day','protein_constraint_lower','protein_constraint_upper'),
+  constraintRow('FDN','% DM','NDF_constraint_lower','NDF_constraint_upper'),
+  constraintRow('FDN de forragem','% DM','forage_NDF_constraint',null),
+  supplyRow('Amido','starch'),
+  constraintRow('Gordura','% DM',null,'fat_constraint'),
+  constraintRow('Cálcio','g/day','calcium_constraint',null),
+  constraintRow('Fósforo','g/day','phosphorus_constraint',null),
+  constraintRow('Energia líquida','Mcal/day','NASEM_net_energy_constraint',null)
+ ];
+ $('technicalConstraintRows').innerHTML=rows.join('')||`<tr><td colspan="${lactating?5:4}">—</td></tr>`;
+ $('technicalConstraintMaxHeading').classList.toggle('hidden',!lactating);
+ const emissions=r.emissions||{},emissionRows=[];
+ if(Number.isFinite(emissions.enteric_methane_g_day))emissionRows.push([translateSource('Metano entérico'),fmt(emissions.enteric_methane_g_day,1)+' g/dia',emissions.source_reference||emissions.methane_model||'—']);
+ if(Number.isFinite(emissions.urine_nitrogen_kg_day))emissionRows.push([translateSource('Nitrogênio urinário'),fmt(emissions.urine_nitrogen_kg_day,3)+' kg/dia',emissions.source_reference||emissions.urinary_nitrogen_model||'—']);
+ $('technicalEmissionRows').innerHTML=emissionRows.map(([label,value,source])=>`<tr><td>${esc(label)}</td><td>${esc(value)}</td><td>${esc(source)}</td></tr>`).join('')||'<tr><td colspan="3">—</td></tr>';
+ details.classList.remove('hidden');
 }
 $('printResults').addEventListener('click',()=>{if(lastResult)window.print();});
+window.addEventListener('beforeprint',()=>{const details=$('technicalDetails');if(details)details.open=true;});
+$('clearStageSummary').addEventListener('click',()=>{stageSummary=[];renderStageSummary();});
 
-const profileLabels={mature_body_weight:'Peso adulto (kg)',body_condition_score_5:'Escore de condição corporal (1–5)',days_in_milk:'Dias em lactação',day_of_pregnancy:'Dia de gestação',calving_interval:'Intervalo entre partos (dias)',milk_fat:'Gordura do leite (%)',milk_true_protein:'Proteína verdadeira do leite (%)',milk_lactose:'Lactose do leite (%)',milk_production:'Produção de leite (kg/dia)',housing:'Alojamento',distance:'Distância percorrida (m)',ndf_percentage:'FDN da dieta (% MS)',process_based_phosphorus_requirement:'Fósforo do módulo de processo (g/dia)'};
-const profileNumberRules={mature_body_weight:{positive:true},body_condition_score_5:{min:1,max:5},days_in_milk:{integer:true},day_of_pregnancy:{integer:true},calving_interval:{integer:true,positive:true},milk_fat:{max:100},milk_true_protein:{max:100},milk_lactose:{max:100},ndf_percentage:{max:100}};
-const primaryProfileKeys=new Set(['days_in_milk','day_of_pregnancy','milk_fat','milk_true_protein','milk_production']);
+const profileLabels={mature_body_weight:'Peso adulto (kg)',body_condition_score_5:'Escore de condição corporal (1–5)',days_in_milk:'Dias em lactação',day_of_pregnancy:'Dia de gestação',average_daily_gain_heifer:'Ganho diário (kg/dia)',calving_interval:'Intervalo entre partos (dias)',milk_fat:'Gordura do leite (%)',milk_true_protein:'Proteína verdadeira do leite (%)',milk_lactose:'Lactose do leite (%)',milk_production:'Produção de leite (kg/dia)',housing:'Alojamento',distance:'Distância percorrida (m)',ndf_percentage:'FDN da dieta (% MS)',process_based_phosphorus_requirement:'Fósforo do módulo de processo (g/dia)'};
+const profileNumberRules={mature_body_weight:{positive:true},body_condition_score_5:{min:1,max:5},days_in_milk:{integer:true},day_of_pregnancy:{integer:true},average_daily_gain_heifer:{min:0},calving_interval:{integer:true,positive:true},milk_fat:{max:100},milk_true_protein:{max:100},milk_lactose:{max:100},ndf_percentage:{max:100}};
+const primaryProfileKeys=new Set(['days_in_milk','day_of_pregnancy','average_daily_gain_heifer','milk_fat','milk_true_protein','milk_production']);
 const lactationPhases=['fresh','early','mid','late'];
 let profileRequestVersion=0;
 function profileInputs(){return [...document.querySelectorAll('#animalPrimaryFields [data-profile], #productionGoals [data-profile], #advancedFields [data-profile]')];}
@@ -1255,7 +1829,7 @@ function clearCalculatedDietContext(source='candidate'){
  if(input?.dataset.calculatedSource===source){input.value='';delete input.dataset.calculatedSource;}
 }
 function renderAdvancedProfileFields(){if($('advancedFields').dataset.ready==='true')return;const entries=Object.entries(profileLabels).filter(([key])=>!primaryProfileKeys.has(key)&&!['milk_lactose','process_based_phosphorus_requirement'].includes(key));$('advancedFields').innerHTML=entries.map(([key,label])=>{const optional=key==='ndf_percentage',control=key==='housing'?`<select class="input" id="profile-${key}" name="${key}" data-profile="${key}" aria-describedby="origin-${key}" required><option value="">${translateSource('Selecione')}</option><option value="Barn">Barn</option><option value="Grazing">Grazing</option></select>`:`<input class="input" id="profile-${key}" name="${key}" data-profile="${key}" aria-describedby="origin-${key}" type="text" inputmode="decimal" min="0" step="any" ${optional?'':'required'}>`;const hint=optional?`<small class="micro-note">${translateSource('Quando vazia, a FDN é derivada da composição da dieta candidata.')}</small>`:'';return `<div class="field"><label id="label-${key}" for="profile-${key}">${translateSource(label)}</label>${control}<div class="parameter-tools"><small id="origin-${key}" class="parameter-origin"></small></div>${hint}</div>`;}).join('');$('advancedFields').dataset.ready='true';$('advancedFields').dataset.category='lactating_cow';renderParameterOrigins();}
-function renderProfileSummary(){let weight=null;try{weight=parseNumericInput($('weight').value,'Peso corporal (kg)',{optional:true,min:0,positive:true});}catch{}const phase=$('lactationPhase').selectedOptions[0]?.textContent||'',parity=$('category').selectedOptions[0]?.textContent||'',weightText=Number.isFinite(weight)&&weight>0?fmt(weight,1)+' kg':(activeLocale==='en-US'?'not provided':'não informado');$('profileSummary').textContent=[activeLocale==='en-US'?'Lactating cow':'Vaca em lactação',phase|| (activeLocale==='en-US'?'phase not selected':'fase não selecionada'),parity,weightText].filter(Boolean).join(' · ');}
+function renderProfileSummary(){let weight=null;try{weight=parseNumericInput($('weight').value,'Peso corporal (kg)',{optional:true,min:0,positive:true});}catch{}const category=$('category').value,lactating=LACTATING_CATEGORIES.includes(category),label=categoryLabel(category),phase=lactating?($('lactationPhase').selectedOptions[0]?.textContent||''):'',weightText=Number.isFinite(weight)&&weight>0?fmt(weight,1)+' kg':(activeLocale==='en-US'?'not provided':'não informado');$('animalTitle').textContent=label;$('profileSummary').textContent=[label,phase|| (lactating?(activeLocale==='en-US'?'phase not selected':'fase não selecionada'):''),weightText].filter(Boolean).join(' · ');}
 function renderRequirementTable(data){if(!data||data.status!=='success')return;$('requirementsStatus').textContent=(activeLocale==='en-US'?'Requirements calculated from the entered animal data.':'Exigências calculadas com os dados informados.');$('requirementsTable').innerHTML='<table class="table"><thead><tr><th>Nutriente</th><th>Requisito</th><th>Mínimo</th><th>Máximo</th><th>Unidade</th><th>Situação do limite</th></tr></thead><tbody>'+Object.entries(data.constraints).map(([key,item])=>`<tr><td>${({net_energy:'Energia líquida',metabolizable_protein:'Proteína metabolizável',calcium:'Cálcio',phosphorus:'Fósforo',dry_matter:'Matéria seca'})[key]||esc(key)}</td><td>${fmt(data.requirements[key],2)}</td><td>${item.minimum===null?'—':fmt(item.minimum,2)}</td><td>${item.maximum===null?'—':fmt(item.maximum,2)}</td><td>${({'Mcal/day':'Mcal/dia','g/day':'g/dia','kg/day':'kg/dia'})[item.unit]||esc(item.unit)}</td><td>${({calculated:'Calculado pelo NASEM',preliminary_diet_dependent:'Depende da dieta',requires_ration_configuration:'Definido na formulação'})[item.status]||esc(item.status)}</td></tr>`).join('')+'</tbody></table>';$('requirementsTable').classList.remove('hidden');}
 async function updateRequirements(){
  const version=++profileRequestVersion,category=$('category').value;
@@ -1286,7 +1860,7 @@ async function updateRequirements(){
 }
 function onLactationPhaseChange(){renderProfileSummary();invalidateResult();}
 function onPregnancyChange(){if(!$('pregnant').checked)$('profile-day_of_pregnancy').value='';syncPregnancyField();updateRequirements();}
-$('category').addEventListener('change',()=>updateRequirements());
+$('category').addEventListener('change',()=>{syncCategoryFields();updateRequirements();});
 $('lactationPhase').addEventListener('change',onLactationPhaseChange);
 $('pregnant').addEventListener('change',onPregnancyChange);
 for(const id of ['animalPrimaryFields','productionGoals']){
@@ -1297,6 +1871,7 @@ $('advancedFields').addEventListener('input',event=>{if(event.target.matches('[d
 $('advancedFields').addEventListener('change',()=>{renderParameterOrigins();updateRequirements();});
 initializeAppTabs();
 renderAdvancedProfileFields();
+syncCategoryFields();
 updateRequirements();
 
 renderTable();

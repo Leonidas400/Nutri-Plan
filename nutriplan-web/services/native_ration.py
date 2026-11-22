@@ -22,20 +22,29 @@ from services.emissions import (
 from RUFAS.biophysical.animal.nutrients.nutrition_supply_calculator import FeedInRation, NutritionSupplyCalculator
 from RUFAS.biophysical.animal.animal_module_constants import AnimalModuleConstants
 from services.prices import comparison_status, default_price, resolve_price
+from services.milk_potential import (
+    FLOOR_TOLERANCE_KG_DAY, evaluate as evaluate_milk_potential, resolve_reference,
+)
 
 FEED_CSV = Path(__file__).resolve().parents[2] / 'input/data/feed/NASEM_Comp_with_TDN.csv'
 ENUMS = {'Fd_Category': FeedCategorization, 'feed_type': FeedComponentType, 'units': MeasurementUnits}
 BOOLEANS = {'is_fat', 'is_wetforage'}
 OPERATIONS = {'amount_available', 'on_farm_cost', 'purchase_cost', 'buffer'}
 
-# Structural mapping is explicit; the heifer route remains gated until its
-# emissions and full scientific validation are supplied.
+# Structural mapping is explicit so each stage uses its native pen group.
 ANIMAL_MODELS = {
     'multiparous_lactating_cow': (AnimalType.LAC_COW, AnimalCombination.LAC_COW, 'lactating'),
     'first_lactation_cow': (AnimalType.LAC_COW, AnimalCombination.LAC_COW, 'lactating'),
     'heifer_I': (AnimalType.HEIFER_I, AnimalCombination.GROWING, 'growth'),
+    'heifer_II': (AnimalType.HEIFER_II, AnimalCombination.GROWING, 'growth'),
+    'heifer_III': (AnimalType.HEIFER_III, AnimalCombination.CLOSE_UP, 'growth'),
+    'dry_cow': (AnimalType.DRY_COW, AnimalCombination.CLOSE_UP, 'dry'),
 }
-OPTIMIZATION_READY = {'multiparous_lactating_cow', 'first_lactation_cow'}
+OPTIMIZATION_READY = {
+    'multiparous_lactating_cow', 'first_lactation_cow',
+    'heifer_I', 'heifer_II', 'heifer_III', 'dry_cow',
+}
+LACTATING_CATEGORIES = {'multiparous_lactating_cow', 'first_lactation_cow'}
 
 
 class DeterministicRationOptimizer(RationOptimizer):
@@ -51,12 +60,14 @@ class DeterministicRationOptimizer(RationOptimizer):
 class CandidateRationOptimizer(DeterministicRationOptimizer):
     """Use native lactating-cow equations with candidate-specific NDF and emissions."""
 
-    def __init__(self, animal_payload, calculate_candidate_emissions=True, seed=None, *, candidate_ndf=True):
+    def __init__(self, animal_payload, calculate_candidate_emissions=True, seed=None, *,
+                 candidate_ndf=True, calculation_type='lactating'):
         super().__init__()
         self.animal_payload = animal_payload
         self.calculate_candidate_emissions = calculate_candidate_emissions
         self.candidate_seed = seed
         self.candidate_ndf = candidate_ndf
+        self.calculation_type = calculation_type
 
     def _build_initial_value(self, previous_ration, ration_config):
         if previous_ration is None and self.candidate_seed is not None:
@@ -101,7 +112,7 @@ class CandidateRationOptimizer(DeterministicRationOptimizer):
                 'animal_category': self.animal_payload['animal_category'],
                 'body_weight_kg': ration_configuration.pen_average_body_weight,
                 'parameters': self.animal_payload['parameters'],
-            })
+            }, self.calculation_type)
             return emissions['enteric_methane_g_day'], emissions['urine_nitrogen_kg_day']
         return (ration_configuration.pen_average_enteric_methane,
                 ration_configuration.pen_average_urine_nitrogen)
@@ -252,6 +263,8 @@ def available_feeds():
             'ndf_percent_dm': float(row['NDF']) if row['NDF'] else None,
             'starch_percent_dm': float(row['starch']) if row['starch'] else None,
             'fat_percent_dm': float(row['EE']) if row['EE'] else None,
+            'lower_limit': float(row['lower_limit']) if row.get('lower_limit') else 0.0,
+            'limit': float(row['limit']) if row.get('limit') else 100.0,
             'default_price': default_price(identifier),
             'composition_source': str(FEED_CSV.relative_to(FEED_CSV.parents[3])),
         })
@@ -360,18 +373,78 @@ def _explicit_emissions(payload):
     return result
 
 
+CONSTRAINT_UNITS = {
+    'calcium_constraint': 'g/day',
+    'phosphorus_constraint': 'g/day',
+    'protein_constraint_lower': 'g/day',
+    'protein_constraint_upper': 'g/day',
+    'NDF_constraint_lower': '% DM',
+    'NDF_constraint_upper': '% DM',
+    'forage_NDF_constraint': '% DM',
+    'fat_constraint': '% DM',
+    'DMI_constraint_lower': 'kg/day',
+    'DMI_constraint_upper': 'kg/day',
+    'NASEM_net_energy_constraint': 'Mcal/day',
+}
+
+
+def _enrich_constraints(constraints, requirements, configuration):
+    """Attach the solver bound and the achieved supply for each constraint."""
+    fraction = getattr(
+        configuration, 'dmi_constraint_fraction',
+        AnimalModuleConstants.DMI_CONSTRAINT_FRACTION,
+    )
+    for item in constraints:
+        name = item['name']
+        slack = item['slack']
+        minimum = maximum = None
+        if name == 'calcium_constraint':
+            minimum = requirements.calcium
+        elif name == 'phosphorus_constraint':
+            minimum = max(requirements.phosphorus, requirements.process_based_phosphorus)
+        elif name == 'protein_constraint_lower':
+            minimum = requirements.metabolizable_protein
+        elif name == 'protein_constraint_upper':
+            maximum = requirements.metabolizable_protein * AnimalModuleConstants.PROTEIN_UPPER_LIMIT_FACTOR
+        elif name == 'NDF_constraint_lower':
+            minimum = AnimalModuleConstants.MINIMUM_RATION_NDF
+        elif name == 'NDF_constraint_upper':
+            maximum = AnimalModuleConstants.MAXIMUM_RATION_NDF
+        elif name == 'forage_NDF_constraint':
+            minimum = AnimalModuleConstants.MINIMUM_RATION_FORAGE_NDF
+        elif name == 'fat_constraint':
+            maximum = AnimalModuleConstants.MAXIMUM_RATION_FAT
+        elif name == 'DMI_constraint_lower':
+            minimum = requirements.dry_matter * (1 - fraction)
+        elif name == 'DMI_constraint_upper':
+            maximum = requirements.dry_matter * (1 + fraction)
+        elif name == 'NASEM_net_energy_constraint':
+            minimum = requirements.total_energy_requirement
+        if not math.isfinite(slack) or (minimum is None and maximum is None):
+            supply = None
+        elif minimum is not None:
+            supply = minimum + slack
+        else:
+            supply = maximum - slack
+        item['minimum'] = minimum
+        item['maximum'] = maximum
+        item['supply'] = supply
+        item['unit'] = CONSTRAINT_UNITS.get(name)
+
+
 def optimize_native(payload):
     """Attempt native NASEM ration optimization with candidate-specific dependencies when available."""
     if payload.get('previous_ration') == []:
         payload = {**payload, 'previous_ration': None}
     category = payload.get('animal_category')
     try:
-        _, group, _ = animal_model(category)
+        _, group, calculation_type = animal_model(category)
     except ValueError as error:
         return {'ok': False, 'status': 'unsupported_category', 'message': str(error)}
     if category not in OPTIMIZATION_READY:
         return {'ok': False, 'status': 'unsupported_category',
-                'message': 'HEIFER_I maps to RuFaS GROWING, but its complete growth and emission pathway is not validated.'}
+                'message': 'This animal category is not enabled for native ration formulation.'}
+    is_lactating = calculation_type == 'lactating'
 
     has_previous_ration = payload.get('previous_ration') is not None
     emission_keys = ('enteric_methane_g_day', 'urine_nitrogen_kg_day')
@@ -384,8 +457,26 @@ def optimize_native(payload):
     explicit_emissions = _explicit_emissions(payload) if not missing_emissions else None
 
     parameters = dict(payload.get('parameters') or {})
+    allow_below_reference = payload.get('allow_below_reference') is True
+    explore_alternatives = payload.get('explore_alternatives') is True
+    reference_milk = None
+    reference_source = None
+    if is_lactating:
+        reference_milk, reference_source = resolve_reference(payload)
+        target_raw = parameters.get('milk_production')
+        if target_raw is not None and not (isinstance(target_raw, str) and not target_raw.strip()):
+            target_milk = parse_number(target_raw, 'milk_production', minimum=0)
+            if not allow_below_reference and target_milk + FLOOR_TOLERANCE_KG_DAY < reference_milk:
+                return {'ok': False, 'status': 'invalid_input',
+                        'error_code': 'milk_target_below_reference',
+                        'message': 'The milk target cannot be below the current production reference.'}
     supplied_ndf = parameters.get('ndf_percentage')
     candidate_ndf_mode = not has_previous_ration and supplied_ndf in (None, '')
+    if not is_lactating and candidate_ndf_mode:
+        return {'ok': False, 'status': 'incomplete_input',
+                'error_code': 'ndf_required',
+                'missing_inputs': ['ndf_percentage'],
+                'message': 'Enter the diet NDF for this stage or provide a previous ration.'}
 
     if has_previous_ration:
         payload = prepare_animal_payload(payload)
@@ -462,6 +553,7 @@ def optimize_native(payload):
             calculate_candidate_emissions=emissions is None,
             seed=candidate_seed,
             candidate_ndf=candidate_ndf_mode,
+            calculation_type=calculation_type,
         )
     else:
         optimizer = DeterministicRationOptimizer()
@@ -530,13 +622,56 @@ def optimize_native(payload):
     elif has_previous_ration:
         ration_context = {'ndf_percentage': animal['parameters']['ndf_percentage'],
                           'source': 'RuFaS previous-ration feed composition'}
+    _enrich_constraints(constraints, requirements, configuration)
     if emissions is None:
-        emissions = calculate_candidate_ration_emissions(ration_feeds, animal)
+        emissions = calculate_candidate_ration_emissions(ration_feeds, animal, calculation_type)
     elif candidate_ndf_mode:
         emissions = {**emissions,
                      'candidate_ration': [{'rufas_id': feed.info.rufas_id, 'kg_dm_day': feed.amount}
                                           for feed in ration_feeds],
                      'candidate_ration_dmi_kg_day': sum(quantities)}
+
+    # The allowed milk is a model-derived ceiling from the same final ration,
+    # requirements and energy losses used by the optimizer. It only applies to
+    # lactating cows; the same diet must keep the current production reference.
+    milk_potential = None
+    if is_lactating:
+        milk_potential = evaluate_milk_potential(
+            ration_feeds, animal, requirements, emissions, reference_milk)
+        if milk_potential['status'] == 'unavailable':
+            return {'ok': False, 'status': 'calculation_error',
+                    'error_code': 'milk_potential_unavailable',
+                    'message': 'The native milk potential could not be calculated for this ration.',
+                    'milk_potential': milk_potential}
+        if not allow_below_reference and milk_potential['allowed_kg_day'] < reference_milk - FLOOR_TOLERANCE_KG_DAY:
+            return {'ok': False, 'status': 'constraint_violation',
+                    'error_code': 'milk_floor_violation',
+                    'message': 'The lowest-cost ration would allow less milk than the current production reference.',
+                    'milk_potential': milk_potential}
+
+    alternative_solutions = []
+    if explore_alternatives and is_lactating:
+        try:
+            samples = int(payload.get('alternative_samples_per_target', 20))
+        except (TypeError, ValueError):
+            samples = 20
+        samples = max(0, min(samples, 200))
+        if samples:
+            from services.diet_exploration import generate_alternatives
+            target_raw = parameters.get('milk_production')
+            target_value = (
+                parse_number(target_raw, 'milk_production', minimum=0)
+                if target_raw is not None and not (isinstance(target_raw, str) and not target_raw.strip())
+                else reference_milk
+            )
+            try:
+                alternative_solutions = generate_alternatives(
+                    quantities, ordered, optimizer, configuration, group, animal,
+                    requirements, emissions, reference_milk, calculation_type,
+                    target_value, samples, seed=int(round(target_value * 1000)),
+                )
+            except (ArithmeticError, TypeError, ValueError):
+                alternative_solutions = []
 
     ingredients = [{'id': feed.rufas_id, 'name': feed.Name, 'kg_dm': quantity,
                     'kg_as_fed': quantity / (feed.DM / 100),
@@ -549,6 +684,10 @@ def optimize_native(payload):
                    # In automatic mode the pool has many candidates; report only those
                    # actually included in the ration (non-zero dry matter).
                    if selection_mode != 'automatic' or quantity > 1e-6]
+    fixed_inclusions = [
+        {'id': feed.rufas_id, 'name': feed.Name, 'kg_dm': feed.lower_limit}
+        for feed in ordered if abs(feed.limit - feed.lower_limit) <= 1e-9
+    ]
     # These are direct sums of native feed composition, not inferred NASEM energy or MP supply.
     nutrient_supply = {'dry_matter': {'value': sum(quantities), 'unit': 'kg/day', 'source': 'RuFaS optimized quantities'}}
     for label, field_name in (('ndf', 'NDF'), ('crude_protein', 'CP'), ('starch', 'starch'),
@@ -586,9 +725,12 @@ def optimize_native(payload):
                                  'percentage_savings': savings / baseline_cost * 100 if baseline_cost > 0 else None})
     result = {'ok': True, 'status': 'success', 'engine': 'RuFaS RationOptimizer',
               'nutritional_standard': 'NASEM_2021', 'selection_mode': selection_mode,
+              'animal_category': category, 'stage_type': calculation_type,
+              'lactating': is_lactating,
               'cost_day': cost, 'cost_month': cost * 30,
               'currency': next(iter(candidate_currencies)),
               'dmi': sum(quantities), 'ingredients': ingredients,
+              'fixed_inclusions': fixed_inclusions,
               'requirements': animal['requirements'], 'constraints': constraints,
               'requirement_units': {name: item['unit'] for name, item in animal['constraints'].items()},
               'nutrient_supply': nutrient_supply, 'baseline_comparison': baseline,
@@ -596,13 +738,17 @@ def optimize_native(payload):
                           'source': animal['profile_source'],
                           'assumption_type': animal['assumption_type']},
               'solver_status': int(solution.status), 'emissions': emissions,
+              'milk_potential': milk_potential, 'milk_reference_source': reference_source,
+              'milk_floor_enforced': is_lactating and not allow_below_reference,
+              'alternative_solutions': alternative_solutions,
               'price_unit': 'currency/kg as-fed input; currency/kg dry matter optimizer'}
     if has_previous_ration:
         from services.emissions import previous_ration_feeds
         from services.diet_comparison import compare_rations
         previous = previous_ration_feeds(payload['previous_ration'], library, build_feed)
         result['diet_comparison'] = compare_rations(
-            previous, ration_feeds, configuration, selected_prices, payload, animal, emissions)
+            previous, ration_feeds, configuration, selected_prices, payload, animal, emissions,
+            calculation_type=calculation_type)
     if ration_context is not None:
         result['ration_context'] = ration_context
     return result

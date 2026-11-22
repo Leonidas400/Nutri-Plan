@@ -1,14 +1,14 @@
 # Documentação do NutriPlan
 
-Estado verificado em 21/11/2026. Aplicação local de Pesquisa Operacional para formular dietas de menor custo para vacas leiteiras em lactação.
+Estado verificado em 21/11/2026. Aplicação local de Pesquisa Operacional para formular dietas de menor custo para bovinos leiteiros em diferentes estágios.
 
 ## 1. Escopo e fundamento
 
 O NutriPlan usa a implementação instalada do RuFaS e seu padrão NASEM 2021. Calcular **exigências** determina as necessidades do animal informado. Formular uma **dieta** procura quantidades dos ingredientes disponíveis que atendam às restrições com menor custo. A segunda tarefa depende também de composição, preços e limites de inclusão.
 
-Há dois perfis suportados: `first_lactation_cow` (paridade nativa 1) e `multiparous_lactating_cow` (perfil nativo de paridade 2). Ambos usam `AnimalType.LAC_COW`, `AnimalCombination.LAC_COW` e os mesmos métodos lactantes. A seleção de multípara representa esse perfil; o formulário não informa uma contagem exata de lactações superiores a dois ao motor.
+Há seis perfis suportados: `first_lactation_cow` e `multiparous_lactating_cow` (`AnimalType.LAC_COW`, `AnimalCombination.LAC_COW`), `heifer_I` e `heifer_II` (`HEIFER_I`/`HEIFER_II`, `GROWING`), `heifer_III` (`HEIFER_III`, `CLOSE_UP`) e `dry_cow` (`DRY_COW`, `CLOSE_UP`). Os quatro primeiros usam os métodos lactantes; os demais usam as exigências NASEM de mantença, crescimento, gestação e atividade, sem meta de leite.
 
-As fases `fresh`, `early`, `mid` e `late` são classificações da interface. Não alteram parâmetros, não definem intervalos fixos de dias em lactação e não selecionam quatro modelos científicos diferentes. Bezerras, novilhas e vacas secas não estão habilitadas. O bloqueio de `HEIFER_I` permanece no adaptador.
+As fases `fresh`, `early`, `mid` e `late` são classificações da interface para lactantes. Não alteram parâmetros, não definem intervalos fixos de dias em lactação e não selecionam quatro modelos científicos diferentes. Bezerras continuam fora do escopo; novilhas e vaca seca estão habilitadas. O objetivo de todos os estágios é o menor custo sujeito às exigências NASEM; leite, piso de leite e fronteira custo × leite existem somente para lactantes.
 
 ## 2. Execução local
 
@@ -38,17 +38,18 @@ Antes da primeira execução, Resultados mostra um estado vazio. Durante o cálc
 | --- | --- | --- |
 | Peso corporal | kg, positivo | Manutenção, crescimento, consumo, minerais, atividade e emissões. |
 | Peso adulto | kg, positivo | Tamanho adulto e crescimento relativo. |
-| Dias em lactação | dias inteiros, não negativos | Consumo e componentes fisiológicos; independente da fase escolhida. |
-| Produção de leite | kg/dia, não negativa | Exigências para lactação e excreção de nitrogênio. |
+| Dias em lactação | dias inteiros, não negativos, apenas lactantes | Consumo e componentes fisiológicos; independente da fase escolhida. |
+| Ganho diário de novilha | kg/dia, não negativo, obrigatório em novilhas | Crescimento no método nativo. O RuFaS usa kg/dia, não g/dia. |
+| Produção de leite | kg/dia, não negativa, apenas lactantes | Exigências para lactação e excreção de nitrogênio. |
 | Gordura, proteína verdadeira, lactose | % do leite, 0–100 por componente e no máximo 100 na soma | Energia do leite e, conforme o componente, proteína/minerais. Proteína verdadeira não significa proteína bruta da dieta. |
 | Paridade | primeira lactação / multípara | Perfil nativo 1 / 2, independente da fase. |
 | Gestação | sim/não; dia inteiro quando sim | Componentes gestacionais e correções de peso; ausência é `null`, não dia zero presumido. |
 | Condição corporal | escala 1–5 | Estimativa nativa de consumo. |
-| Intervalo entre partos | dias inteiros positivos | Crescimento no método nativo; precisa representar uma condição utilizável pelo cálculo. |
+| Intervalo entre partos | dias inteiros positivos, lactantes e vaca seca | Crescimento no método nativo; precisa representar uma condição utilizável pelo cálculo. |
 | Alojamento | `Barn` / `Grazing` | Atividade; rótulos PT são Confinamento / Pastejo, sem mudar os identificadores. |
 | Distância percorrida | m, não negativa | Energia de atividade; usar o significado solicitado pelo método instalado. |
 | FDN da dieta | % MS, opcional no modo candidato | Derivada da dieta candidata ou da dieta anterior; entrada técnica explícita permanece acessível. |
-| Fósforo do módulo de processo | g/dia, não negativo | Valor calculado pelo módulo de processo. A restrição de fósforo usa o maior valor entre essa entrada e a exigência estimada pelo NASEM. |
+| Fósforo do módulo de processo | g/dia, não negativo, lactantes | Valor calculado pelo módulo de processo. A restrição de fósforo usa o maior valor entre essa entrada e a exigência estimada pelo NASEM. Nos demais estágios, assume 0. |
 | Metano entérico | g/dia | Perda energética. Estimado na formulação ou informado pelo usuário. |
 | Nitrogênio urinário | kg/dia | Perda energética. Estimado na formulação ou informado pelo usuário. |
 | Preço | moeda/kg natural no preenchimento simples | Convertido para custo/kg MS usando a MS do alimento. Não há moeda presumida quando não foi documentada. |
@@ -92,9 +93,11 @@ Para quantidade `xᵢ` em kg MS/dia e fração de MS `dᵢ = DMᵢ/100`, a quant
 
 Essas somas descrevem composição bruta. Proteína metabolizável, energia e minerais digestíveis usam os métodos nativos de aproveitamento, não apenas percentuais. Os totais brutos de cálcio e fósforo ficam disponíveis na API em kg/dia. As verificações nutricionais usam a oferta digestível em g/dia.
 
+Cada alimento selecionado tem limites **mínimo** e **máximo** de inclusão em kg MS por animal/dia. A API `GET /api/nasem-feeds` expõe `lower_limit` e `limit` do catálogo NASEM; a interface usa esses valores como padrão editável. A opção **Fixar** copia o mínimo para o máximo (`min = max`), mantendo o alimento em quantidade fixa. O resultado da formulação lista essas inclusões em `fixed_inclusions`. Os produtos proprietários do TCC não existem no catálogo; a inclusão fixa usa os alimentos NASEM equivalentes disponíveis.
+
 ## 10. Modelo matemático, solver e restrições
 
-Cada `xᵢ` é a quantidade de um ingrediente em kg de matéria seca por animal/dia, limitada por `lᵢ ≤ xᵢ ≤ uᵢ`. O custo diário é `min C(x) = Σᵢ (pᵢ/dᵢ) xᵢ`, com `pᵢ` em moeda por kg natural e `dᵢ` como fração de matéria seca. Logo, `pᵢ/dᵢ` é o custo por kg MS e `xᵢ/dᵢ` é a quantidade em kg natural. O preço deve usar uma moeda compatível entre os ingredientes. A seleção manual da interface usa limites iniciais de 0 a 10 kg MS/dia por ingrediente. O conjunto recomendado usa limites do catálogo, com 0 e 100 kg MS/dia para os respectivos valores ausentes. O custo é linear nas quantidades. As relações de oferta nutricional e de participação na dieta tornam o problema não linear.
+Cada `xᵢ` é a quantidade de um ingrediente em kg de matéria seca por animal/dia, limitada por `lᵢ ≤ xᵢ ≤ uᵢ`. O custo diário é `min C(x) = Σᵢ (pᵢ/dᵢ) xᵢ`, com `pᵢ` em moeda por kg natural e `dᵢ` como fração de matéria seca. Logo, `pᵢ/dᵢ` é o custo por kg MS e `xᵢ/dᵢ` é a quantidade em kg natural. O preço deve usar uma moeda compatível entre os ingredientes. Na seleção manual, `lᵢ` e `uᵢ` começam nos limites do catálogo e podem ser editados; **Fixar** define `lᵢ = uᵢ`. O conjunto automático usa os limites do catálogo, com 0 e 100 kg MS/dia para valores ausentes. O custo é linear nas quantidades. As relações de oferta nutricional e de participação na dieta tornam o problema não linear.
 
 O motor de formulação é o `RationOptimizer` do RuFaS. O cálculo nutricional usa as relações do NASEM 2021 integradas ao RuFaS. O otimizador chama `scipy.optimize.minimize` com `method="SLSQP"`, a função de custo, uma dieta inicial, os limites e as restrições. O método **Sequential Least Squares Programming** ajusta as quantidades por aproximações quadráticas sucessivas e lida com restrições não lineares. No NutriPlan, o ponto inicial é determinístico e depende dos limites e do consumo estimado.
 
@@ -120,7 +123,7 @@ Os métodos nativos para oferta digestível de cálcio e fósforo referenciam NR
 
 ## 11. Emissões e energia da dieta candidata
 
-Com os dois campos de emissões vazios, `CandidateRationOptimizer` aplica as funções nativas a cada dieta candidata. O metano vem da rota IPCC para vacas lactantes de `EntericMethaneCalculator`. O nitrogênio urinário vem de `ManureExcretionCalculator.calculate_cow_manure`. O metano depende do consumo e da energia bruta estimada da composição. A rota de nitrogênio urinário usa a diferença entre nitrogênio total do esterco e nitrogênio fecal, com o piso da equação nativa de 0,022 kg/dia. Nessa rota, as quantidades de nitrogênio dependem do consumo e da proteína bruta. Com dieta atual, o cálculo da exigência proteica usa a FDN dessa dieta e rejeita uma entrada manual divergente. Sem dieta atual, uma FDN manual é aceita. Quando ambas estão ausentes, o modelo recalcula a FDN e a exigência proteica de cada candidata.
+Com os dois campos de emissões vazios, `CandidateRationOptimizer` aplica as funções nativas a cada dieta candidata. O metano e o nitrogênio urinário vêm das rotas IPCC e de excreção do estágio: vaca lactante, novilha ou vaca seca. O metano depende do consumo e da energia bruta estimada da composição. A rota de nitrogênio urinário usa a diferença entre nitrogênio total do esterco e nitrogênio fecal, com o piso da equação nativa de 0,022 kg/dia. Nessa rota, as quantidades de nitrogênio dependem do consumo e da proteína bruta. Com dieta atual, o cálculo da exigência proteica usa a FDN dessa dieta e rejeita uma entrada manual divergente. Sem dieta atual, uma FDN manual é aceita. Quando ambas estão ausentes, o modelo recalcula a FDN e a exigência proteica de cada candidata.
 
 Essas duas rotas selecionadas não dependem de energia metabolizável previamente calculada. Campos energéticos indisponíveis são sinalizados como não disponíveis internamente, e não preenchidos como emissões zero. Não são usados parâmetros lactantes para habilitar novilhas.
 
@@ -171,7 +174,7 @@ Os testes usam o caso interno Guelph de `data/reference_rations.json` e o conjun
 
 A Fase 17.1 começou com dez testes Python descobertos e um roteiro de navegador separado. O manifesto experimental registra execuções antigas de 64 e 75 testes com descoberta em `tests/`. O material histórico cita uma execução de 94 e módulos específicos de nutrição, preços, sensibilidade e regressão por HTTP. Esses arquivos estavam ausentes da cópia local na abertura da Fase 17. A evidência disponível não identifica a operação que os retirou ou os 94 casos individualmente.
 
-A suíte atual reúne quinze testes de serviços e de regressão e vinte e sete testes HTTP. O caso Guelph e os dados de entrada são compartilhados. Os testes HTTP exercitam o servidor real com porta temporária, as unidades nutricionais, as emissões, as metas, a comparação e a sensibilidade. O roteiro de navegador verifica idiomas, temas, tamanhos de tela, falhas, navegação com os dados em edição e o reinício do formulário após recarregar. Ele também confirma que os dados antigos no armazenamento do navegador são preservados.
+A suíte Python atual reúne 48 testes: onze de `services/milk_potential`, cinco de metas, sete de formulação nativa (incluindo o piso, as duas paridades, a exploração e os limites/oferta das restrições), quatro de validação de entradas, quatro de limites/inclusão fixa, dois de fronteira, nove de estágios de vida e seis HTTP. O caso Guelph e os dados de entrada são compartilhados. Os testes HTTP exercitam o servidor real com porta temporária e conferem `milk_potential`, `fixed_inclusions`, a fronteira, os estágios sem leite, as exigências e o código de erro quando a meta fica abaixo da produção atual. Os roteiros de navegador citados em versões anteriores não estão incluídos nesta cópia; a suíte Python não depende deles.
 
 Para reproduzir a suíte do simulador nesta revisão, use **pytest 9.0.3**. Uma execução completa anterior registrou 7.311 aprovações e 69 avisos. No pytest 9.2.0, os quatro testes de `_build_bounds_user_defined_ration` encontram um `TypeError` ao construir `pytest.approx` para uma lista de tuplas, antes da comparação dos limites. A incompatibilidade está na asserção da suíte do simulador. O comando do README para a aplicação usa `unittest`.
 
@@ -192,7 +195,9 @@ A formulação cobre os dois perfis lactantes habilitados, as restrições nativ
 
 ## 17. Formulação por metas de leite
 
-**Calcular dieta otimizada** envia uma requisição a `POST /api/rufas-native` com `evaluate_milk_targets: true`. O backend avalia a produção informada e, quando a referência pode ser avaliada, testa até sete metas superiores em passos de 1 kg de leite por animal/dia. O intervalo e a resolução limitam o custo computacional a oito chamadas ao SLSQP. As restrições de ingestão, energia, proteína, minerais e inclusão de cada ingrediente avaliam a compatibilidade fisiológica de cada meta. O intervalo da busca não representa um limite fisiológico individual.
+**Calcular dieta otimizada** envia uma requisição a `POST /api/rufas-native` com `evaluate_milk_targets: true` e `milk_reference_kg_day` para categorias lactantes. Para novilhas e vaca seca, a chamada não envia meta de leite e retorna uma única formulação. O backend avalia a meta informada (`parameters.milk_production`) e, quando a referência pode ser avaliada, testa sete metas abaixo e sete acima da referência, em passos de 1 kg de leite por animal/dia. O intervalo e a resolução limitam o custo computacional a quinze chamadas ao SLSQP. As restrições de ingestão, energia, proteína, minerais e inclusão de cada ingrediente avaliam a compatibilidade fisiológica de cada meta. O intervalo da busca não representa um limite fisiológico individual.
+
+A **produção atual** é um piso separado da meta e não pode ser maior que ela. Depois de formular cada dieta, `services/milk_potential.py` calcula o leite permitido pela própria ração em duas rotas. Pela energia, `leite_NEL = (EL_oferta − exigências não lactantes) ÷ energia por kg de leite`, com energia por kg `0,0929×gordura + (0,0547/0,93)×proteína verdadeira + 0,0395×lactose` (Mcal/kg). Pela proteína, `leite_MP = (PM_oferta − PM não lactante) × 0,69 ÷ (proteína verdadeira/100 × 1000)`. O leite permitido é o menor valor entre as duas rotas. Se ele ficar abaixo da produção atual, a formulação normal é rejeitada com `error_code: milk_floor_violation`. Na exploração de alternativas, metas abaixo do piso são resolvidas com `allow_below_reference` e retornam `milk_status: below_reference`; elas aparecem como hipotéticas e nunca viram a dieta principal. O resultado expõe `milk_potential` com as duas rotas, a referência, a margem e o estado `maintained`, `increased`, `below_reference` ou `unavailable`. Essa métrica é um teto do modelo NASEM 2021, não uma previsão biológica da produção observada.
 
 Cada tentativa usa os mesmos dados do animal, preços e ingredientes, recalcula as exigências para sua meta de leite e minimiza `Σ xᵢ pᵢ / dᵢ`. A variável `xᵢ` representa kg MS por animal/dia, `pᵢ` é o preço por kg natural e `dᵢ` é a fração de matéria seca. A dieta só é aceita após sucesso do solver e conferência das restrições, dos limites e do custo. Em caso de falha, a resposta da API conserva o estado da tentativa e o código do solver quando disponível. Falhas de estimativa de emissões ficam registradas na tentativa correspondente, e as outras metas continuam sendo avaliadas.
 
@@ -200,4 +205,15 @@ A resposta identifica `reference_result`, `highest_feasible_result` e `target_re
 
 Uma alternativa é **não dominada** se nenhuma outra solução viável testada tem custo igual ou menor e meta igual ou maior com pelo menos uma melhoria estrita. A interface apresenta a dieta da meta informada e destaca a maior meta viável entre as metas testadas. Se somente uma meta superior tiver solução, ela passa a ser a solução principal exibida. Quando as quantidades por ingrediente coincidem, o painel usa uma única coluna de composição. Uma meta maior pode exigir gasto adicional. A escolha de um compromisso econômico exige uma regra, como o preço marginal recebido pelo leite ou um orçamento informado.
 
+O resultado inclui `frontier`, a lista resumida das metas não dominadas, e, quando a exploração é solicitada, `alternative_solutions` e `exploration_frontier`. A exploração perturba as dietas ótimas, mantém apenas as que atendem às restrições nativas e avalia custo e leite permitido. É uma amostra local, não uma enumeração de todas as dietas possíveis. A interface mostra uma tabela com meta, custo, leite permitido, margem, status e a marca de não dominada, além de um gráfico SVG de custo por leite permitido. O botão **Explorar dietas** acrescenta a nuvem de soluções viáveis não ótimas, com pontos dominados em cinza e abaixo do piso em âmbar; a linha da fronteira é apenas uma referência visual, pois a varredura é discreta e cada ponto é uma solução local do SLSQP.
+
 A análise calcula dietas de custo local para um conjunto discreto de metas. A produção observada depende da curva de lactação, do histórico individual e do manejo. Uma falha indica que a execução ficou sem solução encontrada. [Critérios do SLSQP no SciPy](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html)
+
+
+## 18. Etapas de vida
+
+O NutriPlan habilita `heifer_I`, `heifer_II`, `heifer_III` e `dry_cow` no mesmo motor NASEM. Novilhas usam `GROWING` ou `CLOSE_UP`; a vaca seca usa `CLOSE_UP`. As exigências incluem mantença, crescimento, gestação e atividade; a lactação é zero. Não há meta, piso nem fronteira de leite nesses estágios.
+
+Para novilha e vaca seca sem dieta atual, a FDN da dieta é obrigatória: o consumo estimado pelo NASEM depende da FDN. Com uma dieta atual, a FDN é derivada da composição. As emissões também são específicas do estágio. Novilhas usam `EntericMethaneCalculator.calculate_heifer_methane` e `ManureExcretionCalculator.calculate_heifer_manure`; vacas secas usam as rotas de `calculate_cow_methane`/`calculate_cow_manure` com `is_lactating=False`. As estimativas alimentam a restrição de energia líquida e o resultado da formulação.
+
+O formulário adapta os campos por categoria: lactantes mantêm produção atual, meta, composição, leite e process P; novilhas mostram o ganho diário em kg/dia; vacas secas mostram o intervalo entre partos e o dia de gestação. O card **Resumo das etapas** acumula, apenas na sessão atual, categoria, peso, DMI, NEL, MP e custo por animal/dia. Recarregar a página limpa o resumo. Bezerras continuam fora do escopo e não usam o `RationOptimizer`.

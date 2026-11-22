@@ -39,12 +39,13 @@ def _evaluate(ration, config, emissions):
     return values, passed
 
 
-def compare_rations(previous, optimized, config, prices, payload, animal, emissions):
+def compare_rations(previous, optimized, config, prices, payload, animal, emissions,
+                    calculation_type='lactating'):
     previous_emissions = emissions
     automatic = emissions['provenance'] == 'native_rufas_candidate_ration'
     if automatic:
         try:
-            previous_emissions = calculate_ration_emissions(previous, animal)
+            previous_emissions = calculate_ration_emissions(previous, animal, calculation_type)
         except (ValueError, ArithmeticError):
             previous_emissions = {}
     current, current_pass = _evaluate(previous, config, previous_emissions)

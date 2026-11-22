@@ -18,9 +18,40 @@ PARAMETERS = (
     'housing', 'distance', 'ndf_percentage',
     'process_based_phosphorus_requirement',
 )
-OPTIONAL = {'day_of_pregnancy', 'average_daily_gain_heifer'}
 NUMERIC = set(PARAMETERS) - {'housing'}
 HOUSING_TYPES = {'Barn', 'Grazing'}
+HEIFER_TYPES = {'HEIFER_I', 'HEIFER_II', 'HEIFER_III'}
+BASE_REQUIRED = {'mature_body_weight', 'body_condition_score_5', 'housing', 'distance', 'ndf_percentage'}
+
+
+def _profile_rules(profile):
+    """Return category-specific required and forced parameters."""
+    animal_type = profile.get('animal_type', '')
+    lactating = str(profile.get('lactating', '')).strip().lower() == 'true'
+    is_heifer = animal_type in HEIFER_TYPES
+    is_dry = animal_type == 'DRY_COW'
+    required = set(BASE_REQUIRED)
+    forced = {}
+    if lactating:
+        required |= {
+            'days_in_milk', 'calving_interval', 'milk_fat', 'milk_true_protein',
+            'milk_lactose', 'milk_production', 'process_based_phosphorus_requirement',
+        }
+    else:
+        forced.update({
+            'days_in_milk': None, 'milk_fat': 0.0, 'milk_true_protein': 0.0,
+            'milk_lactose': 0.0, 'milk_production': 0.0,
+            'process_based_phosphorus_requirement': 0.0,
+        })
+    if is_dry:
+        required.add('calving_interval')
+    if is_heifer:
+        required.add('average_daily_gain_heifer')
+        forced['calving_interval'] = None
+    else:
+        forced['average_daily_gain_heifer'] = None
+    forced = {key: value for key, value in forced.items() if key not in required}
+    return lactating, animal_type, required, forced
 
 
 def parse_numeric_parameter(key, raw):
@@ -42,7 +73,8 @@ def profiles():
 def categories():
     result = []
     for key, row in profiles().items():
-        missing = [parameter for parameter in PARAMETERS if parameter not in OPTIONAL and not row[parameter]]
+        _, _, required, _ = _profile_rules(row)
+        missing = [parameter for parameter in PARAMETERS if parameter in required and not row.get(parameter)]
         result.append({'id': key, 'label': row['label'], 'standard': 'NASEM_2021',
                        'readiness': 'requires_additional_inputs' if missing else 'ready',
                        'missing_inputs': missing, 'requires_additional_data': bool(missing),
@@ -57,6 +89,7 @@ def calculate(payload, include_native=False):
     profile = profiles().get(category)
     if profile is None:
         return {'status': 'unsupported_category', 'missing_inputs': [], 'message': 'Unsupported animal category.'}
+    lactating, animal_type, required, forced = _profile_rules(profile)
     try:
         weight = parse_number(payload.get('body_weight_kg'), 'body_weight_kg', minimum=0)
         if not math.isfinite(weight) or weight <= 0:
@@ -72,10 +105,13 @@ def calculate(payload, include_native=False):
     values = {}
     missing = []
     for key in PARAMETERS:
+        if key in forced:
+            values[key] = forced[key]
+            continue
         raw = overrides.get(key, profile[key])
         if raw is None or (isinstance(raw, str) and not raw.strip()):
             values[key] = None
-            if key not in OPTIONAL:
+            if key in required:
                 missing.append(key)
         elif key in NUMERIC:
             try:
@@ -93,7 +129,11 @@ def calculate(payload, include_native=False):
             'missing_inputs': missing}
     if missing:
         return {**base, 'status': 'incomplete_input', 'requirements': {}, 'constraints': {}}
-    if math.fsum(values[key] for key in ('milk_fat', 'milk_true_protein', 'milk_lactose')) > 100 + 1e-9:
+    if animal_type == 'HEIFER_I' and values.get('day_of_pregnancy') is not None:
+        return {**base, 'status': 'invalid_input', 'error_code': 'pregnancy_not_applicable',
+                'requirements': {}, 'constraints': {}}
+    if lactating and math.fsum(
+            values[key] for key in ('milk_fat', 'milk_true_protein', 'milk_lactose')) > 100 + 1e-9:
         return {**base, 'status': 'invalid_input', 'error_code': 'invalid_milk_composition',
                 'requirements': {}, 'constraints': {}}
     try:
@@ -101,13 +141,14 @@ def calculate(payload, include_native=False):
             body_weight=weight, mature_body_weight=values['mature_body_weight'],
             day_of_pregnancy=values['day_of_pregnancy'],
             body_condition_score_5=values['body_condition_score_5'],
-            days_in_milk=int(values['days_in_milk']),
+            days_in_milk=int(values['days_in_milk']) if values['days_in_milk'] is not None else None,
             average_daily_gain_heifer=values['average_daily_gain_heifer'],
-            animal_type=AnimalType[profile['animal_type']], parity=int(profile['parity']),
-            calving_interval=int(values['calving_interval']), milk_fat=values['milk_fat'],
+            animal_type=AnimalType[animal_type], parity=int(profile['parity']),
+            calving_interval=int(values['calving_interval']) if values['calving_interval'] is not None else None,
+            milk_fat=values['milk_fat'],
             milk_true_protein=values['milk_true_protein'], milk_lactose=values['milk_lactose'],
             milk_production=values['milk_production'], housing=values['housing'],
-            distance=values['distance'], lactating=profile['lactating'].lower() == 'true',
+            distance=values['distance'], lactating=lactating,
             ndf_percentage=values['ndf_percentage'],
             process_based_phosphorus_requirement=values['process_based_phosphorus_requirement'],
         )
