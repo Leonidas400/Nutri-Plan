@@ -1,48 +1,55 @@
 # NutriPlan
 
-Aplicação local de Pesquisa Operacional para formular dietas de vacas em lactação com as exigências NASEM 2021 e o motor de formulação RuFaS. O RuFaS usa o algoritmo SLSQP da biblioteca SciPy. O custo e as quantidades são expressos por animal por dia.
+Aplicação local de Pesquisa Operacional para formular dietas de bovinos leiteiros com o motor RuFaS e as exigências NASEM 2021. O solver é o SLSQP do SciPy.
 
-## Iniciar no Ubuntu
+A documentação completa e a metodologia estão em [../README.md](../README.md). A versão em PDF é [../NutriPlan_Documentacao_e_Metodologia.pdf](../NutriPlan_Documentacao_e_Metodologia.pdf).
 
-A partir da raiz do projeto, execute `./nutriplan-web/iniciar_linux.sh` e abra [NutriPlan local](http://127.0.0.1:8765). O inicializador prepara o Python 3.13 e as dependências declaradas no `pyproject.toml` do RuFaS, incluindo SciPy. Com o ambiente já instalado, também é possível executar o servidor diretamente.
+## Iniciar
+
+A partir da raiz do projeto:
+
+```bash
+./nutriplan-web/iniciar_linux.sh
+```
+
+Ou com o ambiente já instalado:
 
 ```bash
 cd nutriplan-web
 PYTHONPATH=.. ../venv/bin/python server.py
 ```
 
-A variável `PORT` permite escolher outra porta. A primeira instalação pode precisar de internet. A formulação usa os arquivos e o motor locais.
+Abra `http://127.0.0.1:8765`. A variável `PORT` permite outra porta.
 
-## Formular e comparar
+## Fluxo da interface
 
-1. Em **Animal**, escolha a **categoria animal**: vaca de primeira lactação, vaca multípara, novilha I/II/III ou vaca seca. Para lactantes, informe fase, produção atual, meta e composição do leite. Para novilhas, informe o ganho diário em **kg/dia**. Para vaca seca, informe o intervalo entre partos e, se gestante, o dia de gestação. Campos numéricos aceitam ponto ou vírgula decimal.
-2. Em **Dieta atual**, cadastre opcionalmente os alimentos do lote e suas quantidades em kg de matéria seca por animal/dia. O total é atualizado durante a edição. Os preços informados nessa seção servem para a comparação de custo.
-3. Em **Dieta otimizada**, pesquise por nome nos grupos ou no catálogo personalizado de 175 alimentos. A seleção vazia usa o conjunto recomendado com preços disponíveis. Para formular com uma lista própria, marque de 2 a 25 ingredientes. Revise os preços e clique **Calcular dieta otimizada**. A produção atual é o piso que a dieta não pode reduzir; a meta não pode ser menor que ele. O sistema formula a meta e testa sete metas abaixo e sete acima da referência, em passos de 1 kg/dia.
-4. Em **Resultados**, a tela é dividida em três partes: **Custo das dietas** (comparação entre custo minimizado e máximo de produção: custo/dia, kg ingeridos, massa seca e leite em L/dia), **Gráficos e tabelas** (fronteira e resumo das etapas) e **Informações sobre a dieta** (composição e detalhes técnicos recolhíveis, com restrições e oferta na mesma tabela comparando as duas dietas). Para lactantes, a fronteira usa o **leite produzido** no eixo X e o botão **Explorar dietas** gera soluções viáveis não ótimas. Se o potencial de produção ficar abaixo da produção atual, a formulação é rejeitada. Para novilhas e vaca seca, não há meta/piso de leite; o resultado mostra as exigências do estágio.
-5. Em **Metodologia**, consulte o modelo de custo, as onze restrições, os critérios do SLSQP, o piso de leite, os limites de inclusão e a interpretação das metas e emissões.
+1. **Animal** — categoria, peso, produção atual, composição do leite, parâmetros fisiológicos, quantidade de animais e emissões opcionais.
+2. **Dieta otimizada** — seleção de alimentos, preços, limites mínimo/máximo em kg MS/dia, inclusão fixa e cálculo.
+3. **Resultados** — custo, consumo, matéria seca, leite, exigências, restrições, emissões e composição.
+4. **Metodologia** — fundamentação NASEM/RuFaS, modelo, restrições, solver e limitações.
 
-**Limites e inclusão fixa.** Na tabela de ingredientes, **Mín.** e **Máx.** são em kg MS por animal/dia e começam com os limites do catálogo NASEM. Marcar **Fixar** copia o mínimo para o máximo, mantendo o alimento em quantidade fixa.
+A produção atual é o piso. O sistema testa níveis superiores de leite em passos de 1 kg/dia e usa o maior nível viável como **Dieta maximizada**.
 
-**Emissões — configuração opcional.** Deixe metano (g/dia) e nitrogênio urinário (kg/dia) em branco para usar as estimativas RuFaS da dieta candidata. Para uma análise com dados próprios, preencha os dois valores. As emissões utilizadas são retornadas pela API de formulação.
+O seletor **Por animal / Por rebanho** altera apenas a apresentação: no escopo de rebanho, os valores são multiplicados pela quantidade de animais. A otimização continua sendo feita por animal representativo.
 
-Os dados da análise ficam disponíveis enquanto a página está aberta. Ao recarregá-la, a formulação começa vazia e o navegador reaplica as preferências de idioma e tema. Os catálogos distribuídos com o motor são lidos automaticamente.
+## Dieta otimizada
 
-## Etapas de vida
+- **Grupos recomendados**: alimentos organizados em volumosos, energéticos, proteicos e minerais/corretivos.
+- **Personalizado**: seleção livre com filtros.
+- Preços são informados por kg de matéria natural e convertidos internamente para R$/kg de matéria seca.
+- **Fixar** define inclusão mínima igual à máxima.
+- A seleção vazia usa os alimentos recomendados que tenham preço.
+- A seleção manual exige pelo menos dois alimentos e preço válido.
 
-O NutriPlan formula para vacas lactantes e para **novilha I, novilha II, novilha III e vaca seca**. Esses estágios usam as exigências NASEM de mantença, crescimento, gestação e atividade, sem meta de leite, sem piso e sem fronteira custo × leite. O objetivo continua sendo o menor custo da dieta.
+## Resultados
 
-As emissões de metano e nitrogênio urinário usam as rotas nativas do RuFaS para cada estágio: vaca lactante, novilha e vaca seca. Para novilha e vaca seca sem dieta atual, informe a FDN da dieta; ela é necessária porque o consumo estimado depende da FDN. O resumo das etapas guarda os resultados apenas na sessão atual; recarregar a página limpa o resumo.
+O seletor de escopo fica no topo da tela. No escopo por rebanho, custo, alimento, matéria seca, leite e nutrientes são multiplicados pela quantidade de animais. A composição percentual da MS não muda.
 
-## Interpretação
+A dieta é uma solução local do SLSQP. A maximização de leite é uma varredura discreta, não uma prova de ótimo global. O resultado deve ser interpretado como a melhor solução viável encontrada, não como previsão biológica da produção.
 
-O SLSQP do SciPy busca um mínimo local sob restrições não lineares. A viabilidade de uma meta indica que o modelo encontrou uma dieta que atende às exigências calculadas para ela. A produção observada depende do animal e do manejo. Os dados Guelph distribuídos com o projeto servem para regressão computacional. Consulte o [manual técnico](DOCUMENTACAO_NUTRIPLAN.md).
-
-## Verificar esta versão
-
-Na pasta `nutriplan-web`, o comando abaixo descobre os 48 testes Python da aplicação. Os testes HTTP iniciam seu próprio servidor em uma porta local temporária. O motor RuFaS deve estar disponível para os cálculos. A suíte de testes do simulador tem execução independente.
+## Testes
 
 ```bash
-MPLBACKEND=Agg PYTHONPATH=.:.. ../venv/bin/python -m unittest discover -s tests -v
+cd nutriplan-web
+MPLBACKEND=Agg PYTHONPATH=.:.. ../venv/bin/python -m unittest discover -s tests -q
 ```
-
-Os testes cobrem a fórmula de energia do leite, as rotas NEL/MP, o piso contra a produção atual, as duas paridades, a varredura bilateral, a exploração de dietas alternativas, os estágios novilha I/II/III e vaca seca, a validação de composição e os contratos HTTP. Os roteiros de navegador citados em versões anteriores não estão incluídos nesta cópia; a suíte Python não depende deles.
